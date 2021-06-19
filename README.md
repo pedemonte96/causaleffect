@@ -10,6 +10,8 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install `causal
 pip install causaleffect
 ```
 
+If one wants to plot graphs with the `plotGraph` function, either the `pycairo` library (version `1.17.2` or later) or the `cairocffi` library is also required.
+
 ## Usage
 
 If we want to compute the causal effect P(y|do(X=x)) from the causal diagram shown below,
