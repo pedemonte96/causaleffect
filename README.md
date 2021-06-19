@@ -4,7 +4,7 @@
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install `causaleffect` (not yet uploaded).
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install `causaleffect`.
 
 ```bash
 pip install causaleffect
