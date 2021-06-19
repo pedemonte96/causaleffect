@@ -30,9 +30,8 @@ setup(
     author="Martí Pedemonte",
     author_email="pedemonte96@gmail.com",
     url='https://github.com/pedemonte96/causaleffect',
-    
     install_requires=install_requires,
-
+    python_requires=">=3.7",
     keywords=['causaleffect', 'causality',
     'causation', 'identifiability', 'identification',
     'graph'],
