@@ -25,6 +25,8 @@ class NoCaseTriggered(Exception):
 
 
 def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
+    '''Recursive non-conditional identification algorithm.'''
+
     V = set(G.vs["name"])
     G_dir, G_bidir = get_directed_bidirected_graphs(G)
     # line 1
@@ -48,9 +50,9 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
             P_out._sumset = P._sumset.union(V.difference(anc))
         else:
             P_out._var = anc
-        if verbose: print("Depth:", tab, "Line 2 output: Y:", Y, "X:", X.intersection(anc), "V:", anc, "P:",
+        if verbose: print("Depth:", tab, "Line 2 output: Y:", Y, "new X:", X.intersection(anc), "new V:", anc, "P:",
                           P_out.printLatex())
-        if verbose: print("Depth:", tab, "Line 2 graph:", G.induced_subgraph(G.vs.select(name_in=anc)))
+        if verbose: print("Depth:", tab, "Line 2 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=anc))))
         return ID_rec(Y, X.intersection(anc), P_out, G.induced_subgraph(G.vs.select(name_in=anc)), ordering,
                       verbose=verbose, tab=tab + 1)
 
@@ -62,7 +64,7 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
     W = V.difference(X).difference(anc_x)
     if len(W) != 0:
         if verbose: print("Depth:", tab, "Line 3 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-        if verbose: print("Depth:", tab, "Line 3 W:", W, "new X:", X.union(W), "V:", V, "P:", P.printLatex())
+        if verbose: print("Depth:", tab, "Line 3 W:", W, "new X:", X.union(W))
         return ID_rec(Y, X.union(W), P, G, ordering, verbose=verbose, tab=tab + 1)
 
     # line 4
@@ -117,7 +119,7 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
         if check_subgraph(C_components_V_X[0], component):
             S_comp = set(component.vs["name"])
             if verbose: print("Depth:", tab, "Line 7 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-            if verbose: print("Depth:", tab, "Line 7 output: Y:", Y, "X:", X.intersection(S_comp))
+            if verbose: print("Depth:", tab, "Line 7 output: Y:", Y, "new X:", X.intersection(S_comp))
 
             if len(S_comp) == 1:
                 if verbose: print("Depth:", tab, "Line 7 S_comp has only 1 element")
@@ -131,7 +133,7 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
                 # if verbose: print("Depth:", tab, "Line 7 out  ", P_out.printLatex())
                 if verbose: print("Depth:", tab, "Line 7 with vertex ", vertex, " and probability: ",
                                   P_out.printLatex())
-                if verbose: print("Depth:", tab, "Line 7 graph:", G.induced_subgraph(G.vs.select(name_in=S_comp)))
+                if verbose: print("Depth:", tab, "Line 7 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))))
 
                 return ID_rec(Y, X.intersection(S_comp), P_out, G.induced_subgraph(G.vs.select(name_in=S_comp)),
                               ordering, verbose=verbose, tab=tab + 1)
@@ -150,13 +152,15 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
                                   P_out.printLatex())
 
                 probabilities.add(P_out)
-            if verbose: print("Depth:", tab, "Line 7 graph:", G.induced_subgraph(G.vs.select(name_in=S_comp)))
+            if verbose: print("Depth:", tab, "Line 7 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))))
             return ID_rec(Y, X.intersection(S_comp), Probability(recursive=True, children=probabilities),
                           G.induced_subgraph(G.vs.select(name_in=S_comp)), ordering, verbose=verbose, tab=tab + 1)
     raise NoCaseTriggered()
 
 
 def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
+    '''Recursive conditional identification algorithm.'''
+
     # line 1
     for node in Z:
         G_xz = unobserved_graph(G)
@@ -168,7 +172,7 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
             return IDC(Y, X.union({node}), cond, P, G, ordering, verbose=verbose, tab=tab + 1)
 
     # line 2
-    if verbose: print("Depth:", tab, "Line 2 CONDITIONAL, calling ID with: Y: ", Y.union(Z), " X: ", X)
+    if verbose: print("Depth:", tab, "Line 2 CONDITIONAL, calling ID_rec with: Y: ", Y.union(Z), " X: ", X)
     prob = ID_rec(Y.union(Z), X, P, G, ordering, verbose=verbose, tab=tab + 1)
     prob_denom = prob.copy()
     prob_denom._sumset = prob_denom._sumset.union(Y)
@@ -179,6 +183,9 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
 
 
 def ID(Y, X, G, cond=set(), verbose=False):
+    '''Identification algorithm. If some conditional variables are inputted, then IDC is called.
+    Otherwise, ID_rec is called.'''
+    
     if len(Y.intersection(X)) + len(Y.intersection(cond)) + len(X.intersection(cond)) != 0:
         raise Exception('Intersection of variables not empty.')
     G_dir, G_bidir = get_directed_bidirected_graphs(G)

@@ -3,7 +3,9 @@ import copy
 
 # Define a probability distribution class
 class Probability:
-    '''Probability distribution class.'''
+    '''Probability distribution class. If recursive is set to True, var and cond are ignored
+    and it becomes a product of probabilities in children. If fraction is set to True, the
+    divisor is enabled.'''
 
     def __init__(self, var=set(), cond=set(), recursive=False, children=set(), sumset=set(), fraction=False,
                  divisor=None):
@@ -20,7 +22,7 @@ class Probability:
 
     # GetAttributes
     def attributes(self):
-        '''Function that shows all attributes of the probability.'''
+        '''Function that shows all attributes of the probability distribution.'''
         out = {}
         out["var"] = self._var
         out["cond"] = self._cond
@@ -100,7 +102,7 @@ class Probability:
                         self._children = set()
 
     def __lt__(self, other):
-        '''Function that enables alphabeticall sorting of variables.'''
+        '''Function that enables alphabetical sorting of variables.'''
         if len(other._var) == 0:
             return True
         if len(self._var) == 0:
@@ -108,7 +110,7 @@ class Probability:
         return sorted(self._var)[0].__lt__(sorted(other._var)[0])
 
     def printLatex(self, tab=0, simplify=True, complete_simplification=True, verbose=False):
-        '''Function that returns a string in LaTeX format of the probability.'''
+        '''Function that returns a string in LaTeX syntax of the probability distribution.'''
         if simplify:
             self.simplify(complete=complete_simplification, verbose=verbose)
             if self._recursive:
@@ -161,6 +163,8 @@ class Probability:
 
 
 def get_new_probability(P, var, cond={}):
+    '''Function that returns a new probability object P_out with variabes var conditioned on cond from
+    the given probability P.'''
     P_out = P.copy()
     if len(cond) == 0:
         if P_out._recursive:
