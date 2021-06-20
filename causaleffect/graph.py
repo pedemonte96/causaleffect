@@ -5,7 +5,7 @@ from igraph import *
 # Define some useful graph functions
 
 def plotGraph(g, name=None):
-    '''Function that plots a graph.'''
+    '''Function that plots a graph. Requires the pycairo library.'''
 
     color_dict = {0: "blue", 1: "#008833"}
     visual_style = {}
@@ -277,17 +277,17 @@ def unobserved_graph(g):
 def dSep(G, Y, node, cond, verbose=False):
     '''Checks if node and the set Y are d-separated, given the whole graph G and the measured variables cond'''
 
-    if verbose: print('dSep Function: dSep of node:', node)
+    if verbose: print('dSep: dSep of node:', node, ' to set: ', Y)
     for y in Y:
-        if verbose: print('dSep Function: Path from ', y, ' to ', node)
+        if verbose: print('dSep: Path from ', y, ' to ', node)
         paths = G.get_all_simple_paths(v=G.vs.find(name_eq=node), to=G.vs.find(name_eq=y), mode='ALL')
-        if verbose: print('dSep Function: All possible paths: ', paths)
+        if verbose: print('dSep: All possible paths: ', paths)
         for p in paths:
             if verbose:
                 p_name = []
                 for i in p:
                     p_name.append(G.vs[i]["name"])
-                print('dSep Function: Path:', p, p_name)
+                print('dSep: Path:', p, p_name)
             if not is_path_d_separated(G, p, cond, verbose=verbose):
                 return False
     # If all paths are d-separated, return True
@@ -297,7 +297,7 @@ def dSep(G, Y, node, cond, verbose=False):
 def is_path_d_separated(G, p, cond, verbose=False):
     '''Checks if a path is d-separated, given the whole graph G and the measured variables cond'''
 
-    if verbose: print('is_path_d_separated Function: Path ', p, 'Conditional: ', cond)
+    if verbose: print('is_path_d_separated: Path ', p, 'Conditional: ', cond)
     if G.vs[p[0]]["name"] in cond or G.vs[p[-1]]["name"] in cond:
         raise Exception('Source or target nodes in conditional d-separation path')
     for i in range(len(p) - 2):
@@ -320,18 +320,20 @@ def is_path_d_separated(G, p, cond, verbose=False):
                 e2 = 'b'
             else:
                 e2 = 'l'
-        if verbose: print('is_path_d_separated Function: Direction of edges:', e1, e2)
 
         if ((e1 == 'r' and e2 == 'r') or (e1 == 'l' and e2 == 'l') or (e1 == 'l' and e2 == 'r') or
                 (e1 == 'l' and e2 == 'b') or (e1 == 'b' and e2 == 'r')):  # -> -> // <- <- // <- -> // <- <-> // <-> ->
             if G.vs[p[i + 1]]["name"] in cond:
+                if verbose: print('is_path_d_separated: Chain or Fork:', G.vs[p[i]]["name"], e1, G.vs[p[i+1]]["name"], e2, G.vs[p[i+2]]["name"])
                 return True
 
         if ((e1 == 'r' and e2 == 'l') or (e1 == 'r' and e2 == 'b') or (e1 == 'b' and e2 == 'l') or
                 (e1 == 'b' and e2 == 'b')):  # -> <- // -> <-> // <-> <- // <-> <->
             G_dir, G_bidir = get_directed_bidirected_graphs(G)
             if len(get_descendants(G_dir, G.vs[p[i + 1]]["name"]).intersection(cond)) == 0:
+                if verbose: print('is_path_d_separated: Collider:', G.vs[p[i]]["name"], e1, G.vs[p[i+1]]["name"], e2, G.vs[p[i+2]]["name"])
                 return True
+    if verbose: print('is_path_d_separated: d-connected path ', p, 'Conditional: ', cond)
     return False
 
 
