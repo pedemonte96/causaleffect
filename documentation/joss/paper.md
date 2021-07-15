@@ -28,7 +28,7 @@ bibliography: paper.bib
 
 # Summary
 
-...`[@10.5555/1597348.1597382]`
+...[@Pearl:2006a], [@shpitser2006identification], [@shpitser2006identification2]
 
 
 # References
