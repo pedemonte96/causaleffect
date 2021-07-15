@@ -28,7 +28,7 @@ bibliography: paper.bib
 
 # Summary
 
-...[@Pearl:2006a], [@shpitser2006identification], [@shpitser2006identification2]
+...[@Pearl:2006a], [@Pearl:2006b]
 
 
 # References
