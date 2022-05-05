@@ -61,3 +61,7 @@ Some examples from the dissertation can be found in this repository:
 | Figure 3.15 (a) | [`example_7.py`](examples/example_7.py)  |
 | Figure 3.15 (b) | [`example_8.py`](examples/example_8.py)  |
 | Figure 3.16     | [`example_9.py`](examples/example_9.py)  |
+
+## Documentation
+
+The extended documentation of this library can be found under the folder `documentation` of this same repositoru+y or in https://arxiv.org/abs/2107.04632.
