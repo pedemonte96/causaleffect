@@ -64,4 +64,4 @@ Some examples from the dissertation can be found in this repository:
 
 ## Documentation
 
-The extended documentation of this library can be found under the folder `documentation` of this same repositoru+y or in https://arxiv.org/abs/2107.04632.
+The extended documentation of this library can be found under the folder `documentation` of this same repository or in https://arxiv.org/abs/2107.04632.
