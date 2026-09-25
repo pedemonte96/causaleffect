@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 from igraph import *
 
@@ -176,15 +178,13 @@ def createGraph(list_edges_string, verbose=False):
     vertices = []
     edges = []
     confounding = []
-    for e in list_edges_string:
+    for edge in list_edges_string:
         conf = 0
-        e = e.replace(" ", "")
-        endpoints = e.replace("<", "").replace("-", "").replace(">", "")
-        for i in range(1, len(endpoints)):
-            if endpoints[i].isalpha():
-                vertex1, vertex2 = endpoints[:i], endpoints[i:]
-                break
-        e = e.replace(vertex1, "").replace(vertex2, "")
+        parts = re.split(r"(<->|->|<-)", edge)
+        if len(parts) != 3 or not parts[0].strip() or not parts[2].strip():
+            raise ValueError(f"Invalid edge: {edge!r}")
+        vertex1, arrow, vertex2 = parts
+        vertex1, vertex2 = vertex1.strip(), vertex2.strip()
         index1, index2 = -1, -1
         if vertex1 in vertices:
             index1 = vertices.index(vertex1)
@@ -196,10 +196,10 @@ def createGraph(list_edges_string, verbose=False):
         else:
             index2 = len(vertices)
             vertices.append(vertex2)
-        if (e[0] == '<'):
+        if (arrow[0] == '<'):
             conf += 1
             edges.append((index2, index1))
-        if (e[-1] == '>'):
+        if (arrow[-1] == '>'):
             conf += 1
             edges.append((index1, index2))
         # confounding edge
