@@ -26,6 +26,7 @@ import causaleffect
 G = causaleffect.createGraph(['X<->Y', 'Z->Y', 'X->Z', 'W->X', 'W->Z'])
 causaleffect.plotGraph(G)
 ```
+
 which renders the following image
 
 ![dag](images/usage_plot.png)
@@ -38,6 +39,7 @@ P.printLatex()
 ```
 
 The code above computes the causal effect, and returns a string encoding the distribution in LaTeX notation:
+
 ```
 '\sum_{w, z}P(w)P(z|w, x)\left(\sum_{x}P(x|w)P(y|w, x, z)\right)'
 ```
@@ -46,21 +48,23 @@ This string, in LaTeX, is
 
 ![effect](images/causal_effect.png)
 
+If the effect is not identifiable, `ID` returns a `Probability` with `identifiable == False`. Its `hedge` contains the two C-forest graphs; use `printGraph(P.hedge[0])` and `printGraph(P.hedge[1])` to inspect them.
+
 ## Examples
 
 Some examples from the dissertation can be found in this repository:
 
-| Figure number   | Example file                             |
-|-----------------|------------------------------------------|
-| Figure 3.5 (a)  | [`example_1.py`](examples/example_1.py)  |
-| Figure 3.6 (a)  | [`example_2.py`](examples/example_2.py)  |
-| Figure 3.6 (b)  | [`example_3.py`](examples/example_3.py)  |
-| Figure 3.10     | [`example_4.py`](examples/example_4.py)  |
-| Figure 3.12     | [`example_5.py`](examples/example_5.py)  |
-| Figure 3.13     | [`example_6.py`](examples/example_6.py)  |
-| Figure 3.15 (a) | [`example_7.py`](examples/example_7.py)  |
-| Figure 3.15 (b) | [`example_8.py`](examples/example_8.py)  |
-| Figure 3.16     | [`example_9.py`](examples/example_9.py)  |
+| Figure number   | Example file                            |
+| --------------- | --------------------------------------- |
+| Figure 3.5 (a)  | [`example_1.py`](examples/example_1.py) |
+| Figure 3.6 (a)  | [`example_2.py`](examples/example_2.py) |
+| Figure 3.6 (b)  | [`example_3.py`](examples/example_3.py) |
+| Figure 3.10     | [`example_4.py`](examples/example_4.py) |
+| Figure 3.12     | [`example_5.py`](examples/example_5.py) |
+| Figure 3.13     | [`example_6.py`](examples/example_6.py) |
+| Figure 3.15 (a) | [`example_7.py`](examples/example_7.py) |
+| Figure 3.15 (b) | [`example_8.py`](examples/example_8.py) |
+| Figure 3.16     | [`example_9.py`](examples/example_9.py) |
 
 ## Documentation
 
