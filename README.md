@@ -65,9 +65,3 @@ Some examples from the dissertation can be found in this repository:
 ## Documentation
 
 The extended documentation of this library can be found under the folder `documentation` of this same repository or in https://arxiv.org/abs/2107.04632.
-
-## Citation
-
-If you use `causaleffect` in research, please cite:
-
-Pedemonte, M., Vitrià, J., & Parafita, Á. (2021). *Algorithmic Causal Effect Identification with causaleffect*. arXiv. https://doi.org/10.48550/arXiv.2107.04632
