@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use causaleffect in research, please cite the paper below.
+authors:
+  - family-names: Pedemonte
+    given-names: Martí
+title: causaleffect
+repository-code: https://github.com/pedemonte96/causaleffect
+preferred-citation:
+  type: report
+  authors:
+    - family-names: Pedemonte
+      given-names: Martí
+    - family-names: Vitrià
+      given-names: Jordi
+    - family-names: Parafita
+      given-names: Álvaro
+  title: Algorithmic Causal Effect Identification with causaleffect
+  year: 2021
+  doi: 10.48550/arXiv.2107.04632
