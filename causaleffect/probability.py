@@ -5,10 +5,11 @@ import copy
 class Probability:
     '''Probability distribution class. If recursive is set to True, var and cond are ignored
     and it becomes a product of probabilities in children. If fraction is set to True, the
-    divisor is enabled.'''
+    divisor is enabled. A hedge marks a non-identifiable effect.'''
 
     def __init__(self, var=set(), cond=set(), recursive=False, children=set(), sumset=set(), fraction=False,
-                 divisor=None):
+                 divisor=None, hedge=None):
+        '''Create a probability expression or a non-identifiability result with a hedge.'''
         self._var = var
         self._cond = cond
         self._recursive = recursive
@@ -16,6 +17,12 @@ class Probability:
         self._sumset = sumset
         self._fraction = fraction
         self._divisor = divisor
+        self.hedge = hedge
+
+    @property
+    def identifiable(self):
+        '''Whether the causal effect has an identifiable probability expression.'''
+        return self.hedge is None
 
     def copy(self):
         return copy.deepcopy(self)
@@ -23,6 +30,8 @@ class Probability:
     # GetAttributes
     def attributes(self):
         '''Function that shows all attributes of the probability distribution.'''
+        if not self.identifiable:
+            return {"identifiable": False, "hedge": self.hedge}
         out = {}
         out["var"] = self._var
         out["cond"] = self._cond
@@ -110,7 +119,9 @@ class Probability:
         return sorted(self._var)[0].__lt__(sorted(other._var)[0])
 
     def printLatex(self, tab=0, simplify=True, complete_simplification=True, verbose=False):
-        '''Function that returns a string in LaTeX syntax of the probability distribution.'''
+        '''Return the probability expression or non-identifiability status in LaTeX.'''
+        if not self.identifiable:
+            return r'\text{Causal effect not identifiable}'
         if simplify:
             self.simplify(complete=complete_simplification, verbose=verbose)
             if self._recursive:

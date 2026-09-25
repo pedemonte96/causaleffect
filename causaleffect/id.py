@@ -2,19 +2,6 @@ from causaleffect.probability import *
 from causaleffect.graph import *
 
 
-# Define exceptions that can occur.
-class HedgeFound(Exception):
-    '''Exception raised when a hedge is found.'''
-
-    def __init__(self, g1, g2, message="Causal effect not identifiable. A hedge has been found:"):
-        self._message = message
-        v1, e1 = printGraph(g1)
-        v2, e2 = printGraph(g2)
-        super().__init__(self._message + "\n\nC-Forest 1:\nVertices: " + ', '.join(v1) +
-                         '\nEdges: ' + ', '.join(e1) + "\n\nC-Forest 2:\nVertices: " +
-                         ', '.join(v2) + '\nEdges: ' + ', '.join(e2))
-
-
 class NoCaseTriggered(Exception):
     '''Exception raised when none of the lines in ID is triggered.
     Should not be necessary when algorithm implementation is completed.'''
@@ -58,7 +45,10 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
 
     # line 3
     G_x = G.copy()
-    G_x.delete_edges(G_x.es.select(_target_in=G_x.vs.select(name_in=X)))
+    # Remove both directions of confounding edges incident to X.
+    G_x.delete_edges([edge.index for edge in G_x.es
+                      if edge.target_vertex["name"] in X or
+                      (edge["confounding"] and edge.source_vertex["name"] in X)])
     G_x_dir, G_x_bidir = get_directed_bidirected_graphs(G_x)
     anc_x = get_ancestors(G_x_dir, Y)
     W = V.difference(X).difference(anc_x)
@@ -78,16 +68,18 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
             subcomponent_vertices = set(subcomponent.vs["name"])
             if verbose: print("Depth:", tab, "Line 4 Y:", subcomponent_vertices, "X:",
                               V.difference(subcomponent_vertices))
-            probabilities.add(
-                ID_rec(subcomponent_vertices, V.difference(subcomponent_vertices), P, G, ordering, verbose=verbose,
-                       tab=tab + 1))
+            result = ID_rec(subcomponent_vertices, V.difference(subcomponent_vertices), P, G, ordering,
+                            verbose=verbose, tab=tab + 1)
+            if not result.identifiable:
+                return result
+            probabilities.add(result)
         return Probability(recursive=True, children=probabilities, sumset=V.difference(Y.union(X)))
 
     # line 5
     C_components = get_C_components(G)
     if len(C_components) == 1:
         if verbose: print("Depth:", tab, "Line 5")
-        raise HedgeFound(G, C_components_V_X[0])
+        return Probability(hedge=(G.copy(), C_components_V_X[0].copy()))
 
     # line 6
     if check_subcomponent(C_components_V_X[0], C_components):
@@ -174,6 +166,8 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
     # line 2
     if verbose: print("Depth:", tab, "Line 2 CONDITIONAL, calling ID_rec with: Y: ", Y.union(Z), " X: ", X)
     prob = ID_rec(Y.union(Z), X, P, G, ordering, verbose=verbose, tab=tab + 1)
+    if not prob.identifiable:
+        return prob
     prob_denom = prob.copy()
     prob_denom._sumset = prob_denom._sumset.union(Y)
     prob._fraction = True

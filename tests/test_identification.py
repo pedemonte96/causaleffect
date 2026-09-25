@@ -1,6 +1,5 @@
-from causaleffect import createGraph, graph, printGraph, Probability, ID, id
+from causaleffect import createGraph, graph, printGraph, Probability, ID
 import numpy as np
-import pytest
 
 def test_fig_3_5_a():
     '''Code in Figure 3.5 (a)'''
@@ -51,8 +50,33 @@ def test_fig_3_13():
     '''Code in Figure 3.13'''
 
     G = createGraph(['W->X', 'X->Y_1', 'Z->Y_2', 'W<->Y_1', 'W<->Z', 'W<->Y_2', 'X<->Z', 'W->Z'])
-    with pytest.raises(id.HedgeFound) as e_info:
-        P = ID({'Y_1', 'Y_2'}, {'X'}, G)
+    P = ID({'Y_1', 'Y_2'}, {'X'}, G)
+    assert not P.identifiable
+    forests = [printGraph(forest) for forest in P.hedge]
+    assert [set(vertices) for vertices, _ in forests] == [
+        {'W', 'X', 'Y_1', 'Z', 'Y_2'}, {'W', 'Y_1', 'Z', 'Y_2'}]
+    assert [set(edges) for _, edges in forests] == [
+        {'W->X', 'X->Y_1', 'Z->Y_2', 'W->Z', 'W<->Y_1', 'W<->Y_2', 'X<->Z', 'W<->Z'},
+        {'W->Z', 'Z->Y_2', 'W<->Y_1', 'W<->Y_2', 'W<->Z'}]
+    assert P.attributes() == {'identifiable': False, 'hedge': P.hedge}
+    assert P.printLatex() == r'\text{Causal effect not identifiable}'
+
+
+def test_confounded_direct_effect_returns_hedge():
+    '''A direct effect with confounding returns both hedge forests.'''
+
+    P = ID({'Y'}, {'X'}, createGraph(['X->Y', 'X<->Y']))
+    assert not P.identifiable
+    assert [printGraph(forest) for forest in P.hedge] == [
+        (['X', 'Y'], ['X->Y', 'X<->Y']), (['Y'], [])]
+
+
+def test_conditional_nonidentifiability_returns_hedge():
+    '''Conditional identification preserves a non-identifiability result.'''
+
+    P = ID({'Y'}, {'X'}, createGraph(['Z->X', 'X->Y', 'X<->Y']), cond={'Z'})
+    assert not P.identifiable
+    assert len(P.hedge) == 2
 
 def test_fig_3_15_a():
     '''Code in Figure 3.15 (a)'''
