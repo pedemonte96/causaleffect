@@ -1,6 +1,6 @@
-from causaleffect import *
+"""Code in Figure 3.6 (b)."""
 
-"""Code in Figure 3.6 (b)"""
+from causaleffect import Probability
 
 p1 = Probability(var={"X", "Z"}, cond={"W"})
 p2 = Probability(var={"Y"}, cond={"Z"})
