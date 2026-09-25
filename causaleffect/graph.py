@@ -3,11 +3,11 @@ import re
 import numpy as np
 from igraph import *
 
-
 # Define some useful graph functions
 
+
 def plotGraph(g, name=None):
-    '''Function that plots a graph. Requires the pycairo library.'''
+    """Function that plots a graph. Requires the pycairo library."""
 
     color_dict = {0: "blue", 1: "#008833"}
     visual_style = {}
@@ -26,8 +26,8 @@ def plotGraph(g, name=None):
 
 
 def get_directed_bidirected_graphs(g):
-    '''Function that, given a graph, it decouples it and returns confounded graph
-    and a graph with visible causations.'''
+    """Function that, given a graph, it decouples it and returns confounded graph
+    and a graph with visible causations."""
 
     adj_bidir = np.asarray(g.get_adjacency().data) + np.asarray(g.get_adjacency().data).T
     adj_bidir[adj_bidir < 2] = 0
@@ -50,7 +50,7 @@ def get_directed_bidirected_graphs(g):
 
 
 def get_C_components(g):
-    '''Function that returs the different C-components of a graph.'''
+    """Function that returs the different C-components of a graph."""
 
     g_dir, g_bidir = get_directed_bidirected_graphs(g)
     g_out = g_bidir.copy()
@@ -61,7 +61,7 @@ def get_C_components(g):
 
 
 def get_vertices_no_parents(g):
-    '''Function that returns the set of vertices without parents'''
+    """Function that returns the set of vertices without parents"""
 
     degrees = g.degree(mode="in")
     vertices = []
@@ -72,22 +72,22 @@ def get_vertices_no_parents(g):
 
 
 def get_topological_ordering(g):
-    '''Function that returns the ordering of the vertices of a graph'''
+    """Function that returns the ordering of the vertices of a graph"""
 
     g_dir, g_bidir = get_directed_bidirected_graphs(g)
     return [g_dir.vs[index]["name"] for index in g_dir.topological_sorting()]
 
 
 def get_previous_order(v, possible, ordering):
-    '''Function that returns all previous vertices of a initial vertex from
-    a possible set of vertices and an ordernig of the graph'''
+    """Function that returns all previous vertices of a initial vertex from
+    a possible set of vertices and an ordernig of the graph"""
 
-    return set(ordering[:ordering.index(v)]).intersection(possible)
+    return set(ordering[: ordering.index(v)]).intersection(possible)
 
 
 def get_ancestors(g, v_name):
-    '''Function that returns a set containing all ancestors of a vertex,
-    including itself'''
+    """Function that returns a set containing all ancestors of a vertex,
+    including itself"""
 
     if not g.is_dag():
         raise ValueError("Graph contains a cycle")
@@ -106,14 +106,17 @@ def get_ancestors(g, v_name):
             for i in range(len(new_neighbors)):
                 if g.vs[new_neighbors[i]]["name"] not in ancestors:
                     ancestors.append(g.vs[new_neighbors[i]]["name"])
-                if g.vs[new_neighbors[i]]["name"] not in parents and g.vs[new_neighbors[i]]["name"] not in checked:
+                if (
+                    g.vs[new_neighbors[i]]["name"] not in parents
+                    and g.vs[new_neighbors[i]]["name"] not in checked
+                ):
                     parents.append(g.vs[new_neighbors[i]]["name"])
     return set(ancestors)
 
 
 def get_descendants(g, v_name):
-    '''Function that returns a set containing all descendants of a vertex,
-    including itself'''
+    """Function that returns a set containing all descendants of a vertex,
+    including itself"""
 
     if not g.is_dag():
         raise ValueError("Graph contains a cycle")
@@ -132,19 +135,22 @@ def get_descendants(g, v_name):
             for i in range(len(new_neighbors)):
                 if g.vs[new_neighbors[i]]["name"] not in descendants:
                     descendants.append(g.vs[new_neighbors[i]]["name"])
-                if g.vs[new_neighbors[i]]["name"] not in children and g.vs[new_neighbors[i]]["name"] not in checked:
+                if (
+                    g.vs[new_neighbors[i]]["name"] not in children
+                    and g.vs[new_neighbors[i]]["name"] not in checked
+                ):
                     children.append(g.vs[new_neighbors[i]]["name"])
     return set(descendants)
 
 
 def graphs_are_equal(g1, g2):
-    '''Function that checks if two given graphs are equal'''
+    """Function that checks if two given graphs are equal"""
 
     return check_subgraph(g1, g2) and check_subgraph(g2, g1)
 
 
 def check_subcomponent(subcomponent, components):
-    '''Function that checks if a graph is part of a set of graphs'''
+    """Function that checks if a graph is part of a set of graphs"""
 
     for g in components:
         if graphs_are_equal(subcomponent, g):
@@ -153,7 +159,7 @@ def check_subcomponent(subcomponent, components):
 
 
 def check_subgraph(g1, g2):
-    '''Function that checks ig a graph g1 is a subgraph of g2'''
+    """Function that checks ig a graph g1 is a subgraph of g2"""
 
     # Check that g1<g2
     g1_vertices = set(g1.vs["name"])
@@ -173,7 +179,7 @@ def check_subgraph(g1, g2):
 
 
 def createGraph(list_edges_string, verbose=False):
-    '''Creates a graph from a list of edges in string-format.'''
+    """Creates a graph from a list of edges in string-format."""
 
     vertices = []
     edges = []
@@ -196,22 +202,25 @@ def createGraph(list_edges_string, verbose=False):
         else:
             index2 = len(vertices)
             vertices.append(vertex2)
-        if (arrow[0] == '<'):
+        if arrow[0] == "<":
             conf += 1
             edges.append((index2, index1))
-        if (arrow[-1] == '>'):
+        if arrow[-1] == ">":
             conf += 1
             edges.append((index1, index2))
         # confounding edge
-        if (conf == 2):
+        if conf == 2:
             confounding.append(1)
             confounding.append(-1)
         else:
             confounding.append(0)
 
-    if verbose: print(vertices)
-    if verbose: print(edges)
-    if verbose: print(confounding)
+    if verbose:
+        print(vertices)
+    if verbose:
+        print(edges)
+    if verbose:
+        print(confounding)
     g = Graph(vertex_attrs={"name": vertices}, edges=edges, directed=True)
 
     g.es["confounding"] = confounding
@@ -219,8 +228,8 @@ def createGraph(list_edges_string, verbose=False):
 
 
 def to_R_notation(edges):
-    '''Function that, given a list of strings containing the edges of a graph, returns
-    the equivalent graph information for causaleffect package in R.'''
+    """Function that, given a list of strings containing the edges of a graph, returns
+    the equivalent graph information for causaleffect package in R."""
 
     # ["X->Y", "X<-A", "X<-E", "X<-V", "Y<-A", "Y<-H_1", "Y<-G", "Y<-V", "Y<-H", "Y<-E", "H->V", "V->E"]
     bidirected = []
@@ -239,13 +248,13 @@ def to_R_notation(edges):
         final_bidirected.append(one)
         final_bidirected.append(two)
 
-    out = ', '.join(directed + final_bidirected)
+    out = ", ".join(directed + final_bidirected)
     return out, len(directed) + 1, len(directed) + len(final_bidirected)
 
 
 def unobserved_graph(g):
-    '''Constructs a causal diagram where confounded variables have explicit unmeasurable nodes
-    from a DAG of bidirected edges'''
+    """Constructs a causal diagram where confounded variables have explicit unmeasurable nodes
+    from a DAG of bidirected edges"""
 
     G = g.copy()
     vertices = G.vs["name"]
@@ -275,19 +284,24 @@ def unobserved_graph(g):
 
 
 def dSep(G, Y, node, cond, verbose=False):
-    '''Checks if node and the set Y are d-separated, given the whole graph G and the measured variables cond'''
+    """Checks if node and the set Y are d-separated, given the whole graph G and the measured variables cond"""
 
-    if verbose: print('dSep: dSep of node:', node, ' to set: ', Y)
+    if verbose:
+        print("dSep: dSep of node:", node, " to set: ", Y)
     for y in Y:
-        if verbose: print('dSep: Path from ', y, ' to ', node)
-        paths = G.get_all_simple_paths(v=G.vs.find(name_eq=node), to=G.vs.find(name_eq=y), mode='ALL')
-        if verbose: print('dSep: All possible paths: ', paths)
+        if verbose:
+            print("dSep: Path from ", y, " to ", node)
+        paths = G.get_all_simple_paths(
+            v=G.vs.find(name_eq=node), to=G.vs.find(name_eq=y), mode="ALL"
+        )
+        if verbose:
+            print("dSep: All possible paths: ", paths)
         for p in paths:
             if verbose:
                 p_name = []
                 for i in p:
                     p_name.append(G.vs[i]["name"])
-                print('dSep: Path:', p, p_name)
+                print("dSep: Path:", p, p_name)
             if not is_path_d_separated(G, p, cond, verbose=verbose):
                 return False
     # If all paths are d-separated, return True
@@ -295,50 +309,81 @@ def dSep(G, Y, node, cond, verbose=False):
 
 
 def is_path_d_separated(G, p, cond, verbose=False):
-    '''Checks if a path is d-separated, given the whole graph G and the measured variables cond'''
+    """Checks if a path is d-separated, given the whole graph G and the measured variables cond"""
 
-    if verbose: print('is_path_d_separated: Path ', p, 'Conditional: ', cond)
+    if verbose:
+        print("is_path_d_separated: Path ", p, "Conditional: ", cond)
     if G.vs[p[0]]["name"] in cond or G.vs[p[-1]]["name"] in cond:
-        raise Exception('Source or target nodes in conditional d-separation path')
+        raise Exception("Source or target nodes in conditional d-separation path")
     for i in range(len(p) - 2):
-        e1, e2 = '', ''
+        e1, e2 = "", ""
         if len(G.es.select(_source=p[i]).select(_target=p[i + 1])):
-            if verbose: print(G.vs[p[i]]["name"], '->', G.vs[p[i + 1]]["name"])
-            e1 = 'r'
+            if verbose:
+                print(G.vs[p[i]]["name"], "->", G.vs[p[i + 1]]["name"])
+            e1 = "r"
         if len(G.es.select(_source=p[i + 1]).select(_target=p[i])):
-            if verbose: print(G.vs[p[i]]["name"], '<-', G.vs[p[i + 1]]["name"])
-            if e1 == 'r':
-                e1 = 'b'
+            if verbose:
+                print(G.vs[p[i]]["name"], "<-", G.vs[p[i + 1]]["name"])
+            if e1 == "r":
+                e1 = "b"
             else:
-                e1 = 'l'
+                e1 = "l"
         if len(G.es.select(_source=p[i + 1]).select(_target=p[i + 2])):
-            if verbose: print(G.vs[p[i + 1]]["name"], '->', G.vs[p[i + 2]]["name"])
-            e2 = 'r'
+            if verbose:
+                print(G.vs[p[i + 1]]["name"], "->", G.vs[p[i + 2]]["name"])
+            e2 = "r"
         if len(G.es.select(_source=p[i + 2]).select(_target=p[i + 1])):
-            if verbose: print(G.vs[p[i + 1]]["name"], '<-', G.vs[p[i + 2]]["name"])
-            if e2 == 'r':
-                e2 = 'b'
+            if verbose:
+                print(G.vs[p[i + 1]]["name"], "<-", G.vs[p[i + 2]]["name"])
+            if e2 == "r":
+                e2 = "b"
             else:
-                e2 = 'l'
+                e2 = "l"
 
-        if ((e1 == 'r' and e2 == 'r') or (e1 == 'l' and e2 == 'l') or (e1 == 'l' and e2 == 'r') or
-                (e1 == 'l' and e2 == 'b') or (e1 == 'b' and e2 == 'r')):  # -> -> // <- <- // <- -> // <- <-> // <-> ->
+        if (
+            (e1 == "r" and e2 == "r")
+            or (e1 == "l" and e2 == "l")
+            or (e1 == "l" and e2 == "r")
+            or (e1 == "l" and e2 == "b")
+            or (e1 == "b" and e2 == "r")
+        ):  # -> -> // <- <- // <- -> // <- <-> // <-> ->
             if G.vs[p[i + 1]]["name"] in cond:
-                if verbose: print('is_path_d_separated: Chain or Fork:', G.vs[p[i]]["name"], e1, G.vs[p[i+1]]["name"], e2, G.vs[p[i+2]]["name"])
+                if verbose:
+                    print(
+                        "is_path_d_separated: Chain or Fork:",
+                        G.vs[p[i]]["name"],
+                        e1,
+                        G.vs[p[i + 1]]["name"],
+                        e2,
+                        G.vs[p[i + 2]]["name"],
+                    )
                 return True
 
-        if ((e1 == 'r' and e2 == 'l') or (e1 == 'r' and e2 == 'b') or (e1 == 'b' and e2 == 'l') or
-                (e1 == 'b' and e2 == 'b')):  # -> <- // -> <-> // <-> <- // <-> <->
+        if (
+            (e1 == "r" and e2 == "l")
+            or (e1 == "r" and e2 == "b")
+            or (e1 == "b" and e2 == "l")
+            or (e1 == "b" and e2 == "b")
+        ):  # -> <- // -> <-> // <-> <- // <-> <->
             G_dir, G_bidir = get_directed_bidirected_graphs(G)
             if len(get_descendants(G_dir, G.vs[p[i + 1]]["name"]).intersection(cond)) == 0:
-                if verbose: print('is_path_d_separated: Collider:', G.vs[p[i]]["name"], e1, G.vs[p[i+1]]["name"], e2, G.vs[p[i+2]]["name"])
+                if verbose:
+                    print(
+                        "is_path_d_separated: Collider:",
+                        G.vs[p[i]]["name"],
+                        e1,
+                        G.vs[p[i + 1]]["name"],
+                        e2,
+                        G.vs[p[i + 2]]["name"],
+                    )
                 return True
-    if verbose: print('is_path_d_separated: d-connected path ', p, 'Conditional: ', cond)
+    if verbose:
+        print("is_path_d_separated: d-connected path ", p, "Conditional: ", cond)
     return False
 
 
 def printGraph(G):
-    '''Function that returns a tuple with list of nodes and a list of edges of the graph.'''
+    """Function that returns a tuple with list of nodes and a list of edges of the graph."""
 
     edges = []
     confounded = []

@@ -1,7 +1,7 @@
 from setuptools import setup
 
-version = '0.0.3'
-description = 'Computing causal effects'
+version = "0.0.3"
+description = "Computing causal effects"
 long_description = """
 # causaleffect
 
@@ -17,29 +17,34 @@ For more information,
 please look at our [Github page](https://github.com/pedemonte96/causaleffect).
 """
 
-with open('requirements.txt') as f:
+with open("requirements.txt") as f:
     install_requires = [line.strip() for line in f if line.strip()]
 
 setup(
     name="causaleffect",
-    packages=['causaleffect'],
+    packages=["causaleffect"],
     version=version,
     description=description,
     long_description=long_description,
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     author="Martí Pedemonte",
     author_email="pedemonte96@gmail.com",
-    url='https://github.com/pedemonte96/causaleffect',
+    url="https://github.com/pedemonte96/causaleffect",
     install_requires=install_requires,
     python_requires=">=3.7",
-    keywords=['causaleffect', 'causality',
-    'causation', 'identifiability', 'identification',
-    'graph'],
-    classifiers= [
+    keywords=[
+        "causaleffect",
+        "causality",
+        "causation",
+        "identifiability",
+        "identification",
+        "graph",
+    ],
+    classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3",
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-    ]
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
 )

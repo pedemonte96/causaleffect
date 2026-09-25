@@ -3,13 +3,22 @@ import copy
 
 # Define a probability distribution class
 class Probability:
-    '''Probability distribution class. If recursive is set to True, var and cond are ignored
+    """Probability distribution class. If recursive is set to True, var and cond are ignored
     and it becomes a product of probabilities in children. If fraction is set to True, the
-    divisor is enabled. A hedge marks a non-identifiable effect.'''
+    divisor is enabled. A hedge marks a non-identifiable effect."""
 
-    def __init__(self, var=set(), cond=set(), recursive=False, children=set(), sumset=set(), fraction=False,
-                 divisor=None, hedge=None):
-        '''Create a probability expression or a non-identifiability result with a hedge.'''
+    def __init__(
+        self,
+        var=set(),
+        cond=set(),
+        recursive=False,
+        children=set(),
+        sumset=set(),
+        fraction=False,
+        divisor=None,
+        hedge=None,
+    ):
+        """Create a probability expression or a non-identifiability result with a hedge."""
         self._var = var
         self._cond = cond
         self._recursive = recursive
@@ -21,7 +30,7 @@ class Probability:
 
     @property
     def identifiable(self):
-        '''Whether the causal effect has an identifiable probability expression.'''
+        """Whether the causal effect has an identifiable probability expression."""
         return self.hedge is None
 
     def copy(self):
@@ -29,7 +38,7 @@ class Probability:
 
     # GetAttributes
     def attributes(self):
-        '''Function that shows all attributes of the probability distribution.'''
+        """Function that shows all attributes of the probability distribution."""
         if not self.identifiable:
             return {"identifiable": False, "hedge": self.hedge}
         out = {}
@@ -49,7 +58,7 @@ class Probability:
         return out
 
     def getFreeVariables(self):
-        '''Function that returns the free variables of the distribution.'''
+        """Function that returns the free variables of the distribution."""
         free = set()
         if not self._recursive:
             free = free.union(self._var)
@@ -62,10 +71,10 @@ class Probability:
         return free
 
     def simplify(self, complete=True, verbose=False):
-        '''Function that simplifies some expressions.'''
+        """Function that simplifies some expressions."""
         self.decouple()
         changes = True
-        while (changes):
+        while changes:
             changes = False
             if not self._recursive:
                 sum_variables = self._sumset.intersection(self._var)
@@ -80,7 +89,9 @@ class Probability:
                         if len(self._divisor._var) == 0:
                             self._divisor = None
                             self._fraction = False
-                        elif len(self._divisor._cond) == 0 and self._divisor._var.issubset(self._var):
+                        elif len(self._divisor._cond) == 0 and self._divisor._var.issubset(
+                            self._var
+                        ):
                             self._var = self._var.difference(self._divisor._var)
                             self._cond = self._cond.union(self._divisor._var)
                             self._divisor = None
@@ -92,7 +103,8 @@ class Probability:
                         if not prob1._recursive and not prob2._recursive and not prob1 == prob2:
                             if prob1._cond == prob2._var.union(prob2._cond):
                                 simplified = prob2
-                                if verbose: print("Additional simplification")
+                                if verbose:
+                                    print("Additional simplification")
                                 prob1._var = prob1._var.union(prob2._var)
                                 prob1._cond = prob1._cond.difference(prob2._var)
                                 changes = True
@@ -111,7 +123,7 @@ class Probability:
                         self._children = set()
 
     def __lt__(self, other):
-        '''Function that enables alphabetical sorting of variables.'''
+        """Function that enables alphabetical sorting of variables."""
         if len(other._var) == 0:
             return True
         if len(self._var) == 0:
@@ -119,9 +131,9 @@ class Probability:
         return sorted(self._var)[0].__lt__(sorted(other._var)[0])
 
     def printLatex(self, tab=0, simplify=True, complete_simplification=True, verbose=False):
-        '''Return the probability expression or non-identifiability status in LaTeX.'''
+        """Return the probability expression or non-identifiability status in LaTeX."""
         if not self.identifiable:
-            return r'\text{Causal effect not identifiable}'
+            return r"\text{Causal effect not identifiable}"
         if simplify:
             self.simplify(complete=complete_simplification, verbose=verbose)
             if self._recursive:
@@ -129,35 +141,40 @@ class Probability:
                     prob.simplify(complete=complete_simplification, verbose=verbose)
         out = ""
         if self._fraction:
-            out += '\\frac{'
+            out += "\\frac{"
         if len(self._sumset) != 0:
             if tab == 0:
-                out += '\sum_{' + ', '.join(sorted(self._sumset)).lower() + '}'
+                out += "\sum_{" + ", ".join(sorted(self._sumset)).lower() + "}"
             else:
-                out += '\\left(\sum_{' + ', '.join(sorted(self._sumset)).lower() + '}'
+                out += "\\left(\sum_{" + ", ".join(sorted(self._sumset)).lower() + "}"
         if not self._recursive:
             if len(self._var) != 0:
-                out += 'P(' + ', '.join(sorted(self._var)).lower()
+                out += "P(" + ", ".join(sorted(self._var)).lower()
                 if len(self._cond) != 0:
-                    out += '|' + ', '.join(sorted(self._cond)).lower()
-                out += ')'
+                    out += "|" + ", ".join(sorted(self._cond)).lower()
+                out += ")"
             else:
-                out += '1'
+                out += "1"
         else:
             for prob in sorted(self._children):
-                out += prob.printLatex(tab=tab + 1, simplify=simplify, complete_simplification=complete_simplification,
-                                       verbose=verbose)
+                out += prob.printLatex(
+                    tab=tab + 1,
+                    simplify=simplify,
+                    complete_simplification=complete_simplification,
+                    verbose=verbose,
+                )
         if len(self._sumset) != 0 and tab != 0:
-            out += '\\right)'
+            out += "\\right)"
         if self._fraction:
-            out += '}{'
-            out += self._divisor.printLatex(simplify=simplify, complete_simplification=complete_simplification,
-                                            verbose=verbose)
-            out += '}'
+            out += "}{"
+            out += self._divisor.printLatex(
+                simplify=simplify, complete_simplification=complete_simplification, verbose=verbose
+            )
+            out += "}"
         return out
 
     def decouple(self):
-        '''Recursive function that decouples products of probabilities when possible to ease simplification.'''
+        """Recursive function that decouples products of probabilities when possible to ease simplification."""
         new_children = set()
         decouple = False
         if self._recursive:
@@ -174,8 +191,8 @@ class Probability:
 
 
 def get_new_probability(P, var, cond={}):
-    '''Function that returns a new probability object P_out with variabes var conditioned on cond from
-    the given probability P.'''
+    """Function that returns a new probability object P_out with variabes var conditioned on cond from
+    the given probability P."""
     P_out = P.copy()
     if len(cond) == 0:
         if P_out._recursive:

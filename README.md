@@ -74,4 +74,4 @@ The extended documentation of this library can be found under the folder `docume
 
 If you use `causaleffect` in research, please cite:
 
-Pedemonte, M., Vitrià, J., & Parafita, Á. (2021). *Algorithmic Causal Effect Identification with causaleffect*. arXiv. https://doi.org/10.48550/arXiv.2107.04632
+Pedemonte, M., Vitrià, J., & Parafita, Á. (2021). _Algorithmic Causal Effect Identification with causaleffect_. arXiv. https://doi.org/10.48550/arXiv.2107.04632

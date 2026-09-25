@@ -1,17 +1,14 @@
 Welcome to the Contributors section, thank you for your time!
 
-
 # Important resources:
 
-* [Examples](examples/)
-* [Documentation](documentation/)
-
+- [Examples](examples/)
+- [Documentation](documentation/)
 
 # Testing
 
-This project uses [pytest](https://docs.pytest.org/en/stable/getting-started.html) for testing. 
-All tests are included in the `tests/` folder. In order to run them, use ```pytest``` in the project root folder.
-
+This project uses [pytest](https://docs.pytest.org/en/stable/getting-started.html) for testing.
+All tests are included in the `tests/` folder. In order to run them, use `pytest` in the project root folder.
 
 # Code of conduct:
 
