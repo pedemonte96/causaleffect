@@ -1,21 +1,45 @@
-from causaleffect.probability import *
-from causaleffect.graph import *
+"""Causal effect identification algorithms."""
+
+from igraph import Graph
+
+from causaleffect.graph import (
+    check_subcomponent,
+    check_subgraph,
+    dSep,
+    get_ancestors,
+    get_C_components,
+    get_directed_bidirected_graphs,
+    get_previous_order,
+    get_topological_ordering,
+    printGraph,
+    unobserved_graph,
+)
+from causaleffect.probability import Probability, get_new_probability
 
 
-class NoCaseTriggered(Exception):
+class NoCaseTriggeredError(Exception):
     """Exception raised when none of the lines in ID is triggered.
     Should not be necessary when algorithm implementation is completed."""
 
-    def __init__(self, message="No case has been triggered"):
-        self._message = message
+    def __init__(self, message: str = "No case has been triggered") -> None:
+        """Initialize the exception with its message."""
+        self._message: str = message
         super().__init__(self._message)
 
 
-def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
+def ID_rec(
+    Y: set[str],
+    X: set[str],
+    P: Probability,
+    G: Graph,
+    ordering: list[str],
+    verbose: bool = False,
+    tab: int = 0,
+) -> Probability:
     """Recursive non-conditional identification algorithm."""
 
     V = set(G.vs["name"])
-    G_dir, G_bidir = get_directed_bidirected_graphs(G)
+    G_dir, _G_bidir = get_directed_bidirected_graphs(G)
     # line 1
     if len(X) == 0:
         if verbose:
@@ -82,7 +106,7 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
             or (edge["confounding"] and edge.source_vertex["name"] in X)
         ]
     )
-    G_x_dir, G_x_bidir = get_directed_bidirected_graphs(G_x)
+    G_x_dir, _G_x_bidir = get_directed_bidirected_graphs(G_x)
     anc_x = get_ancestors(G_x_dir, Y)
     W = V.difference(X).difference(anc_x)
     if len(W) != 0:
@@ -187,7 +211,12 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
                 if verbose:
                     print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
                 P_out = get_new_probability(P, {vertex}, cond)
-                # P_mock = Probability(var={vertex}, cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(get_previous_order(vertex, V, ordering).difference(S_comp)))
+                # P_mock = Probability(
+                #     var={vertex},
+                #     cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(
+                #         get_previous_order(vertex, V, ordering).difference(S_comp)
+                #     ),
+                # )
                 # if verbose: print("Depth:", tab, "Line 7 mock ", P_mock.printLatex())
                 # if verbose: print("Depth:", tab, "Line 7 out  ", P_out.printLatex())
                 if verbose:
@@ -229,7 +258,12 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
                 if verbose:
                     print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
                 P_out = get_new_probability(P, {vertex}, cond)
-                # P_mock = Probability(var={vertex}, cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(get_previous_order(vertex, V, ordering).difference(S_comp)))
+                # P_mock = Probability(
+                #     var={vertex},
+                #     cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(
+                #         get_previous_order(vertex, V, ordering).difference(S_comp)
+                #     ),
+                # )
                 # if verbose: print("Depth:", tab, "Line 7 mock ", P_mock.printLatex())
                 # if verbose: print("Depth:", tab, "Line 7 out  ", P_out.printLatex())
                 if verbose:
@@ -259,10 +293,19 @@ def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
                 verbose=verbose,
                 tab=tab + 1,
             )
-    raise NoCaseTriggered()
+    raise NoCaseTriggeredError()
 
 
-def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
+def IDC(
+    Y: set[str],
+    X: set[str],
+    Z: set[str],
+    P: Probability,
+    G: Graph,
+    ordering: list[str],
+    verbose: bool = False,
+    tab: int = 0,
+) -> Probability:
     """Recursive conditional identification algorithm."""
 
     # line 1
@@ -290,15 +333,22 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
     return prob
 
 
-def ID(Y, X, G, cond=set(), verbose=False):
+def ID(
+    Y: set[str],
+    X: set[str],
+    G: Graph,
+    cond: set[str] | None = None,
+    verbose: bool = False,
+) -> Probability:
     """Identification algorithm. If some conditional variables are inputted, then IDC is called.
     Otherwise, ID_rec is called."""
 
+    cond = set() if cond is None else cond
     if len(Y.intersection(X)) + len(Y.intersection(cond)) + len(X.intersection(cond)) != 0:
-        raise Exception("Intersection of variables not empty.")
-    G_dir, G_bidir = get_directed_bidirected_graphs(G)
+        raise ValueError("Intersection of variables not empty.")
+    G_dir, _G_bidir = get_directed_bidirected_graphs(G)
     if not G_dir.is_dag():
-        raise Exception("Entered graph is not a DAG.")
+        raise ValueError("Entered graph is not a DAG.")
     if len(cond) == 0:
         return ID_rec(
             Y,
@@ -308,13 +358,12 @@ def ID(Y, X, G, cond=set(), verbose=False):
             get_topological_ordering(G),
             verbose=verbose,
         )
-    else:
-        return IDC(
-            Y,
-            X,
-            cond,
-            Probability(var=set(G.vs["name"])),
-            G,
-            get_topological_ordering(G),
-            verbose=verbose,
-        )
+    return IDC(
+        Y,
+        X,
+        cond,
+        Probability(var=set(G.vs["name"])),
+        G,
+        get_topological_ordering(G),
+        verbose=verbose,
+    )
