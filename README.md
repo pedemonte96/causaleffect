@@ -7,7 +7,7 @@
 For Python 3.11 or newer, install the current release from PyPI:
 
 ```bash
-python -m pip install numpy causaleffect
+python -m pip install causaleffect
 ```
 
 For Python 3.7–3.10, install the [0.0.2 release](https://pypi.org/project/causaleffect/0.0.2/) instead:
@@ -19,7 +19,7 @@ python -m pip install "causaleffect==0.0.2"
 Its source is preserved in the [0.0.2 Git tag](https://github.com/pedemonte96/causaleffect/tree/0.0.2). Python 3.11+ users can also pin that version. For `plotGraph` in 0.1.0, install the plotting extra:
 
 ```bash
-python -m pip install numpy "causaleffect[plot]"
+python -m pip install "causaleffect[plot]"
 ```
 
 For plotting with 0.0.2, install `pycairo` or `cairocffi` separately.
