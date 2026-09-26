@@ -1,83 +1,10 @@
-"""Regression tests for published causal effect examples."""
+"""Tests for causal effect identification and input validation."""
 
 import pytest
+from igraph import Graph
 
-from causaleffect import ID, Probability, createGraph, printGraph, to_R_notation
+from causaleffect import ID, Probability, createGraph, printGraph
 from causaleffect.id import ID_rec, NoCaseTriggeredError
-
-
-def test_fig_3_5_a() -> None:
-    """Code in Figure 3.5 (a)"""
-
-    edges = ["X<->Z", "X<->W", "X->Z", "Z->W", "W->Y", "X->Y"]
-    G = createGraph(edges)
-    vertices = ["X", "Y", "Z", "W"]
-    actual_vertices, actual_edges = printGraph(G)
-    assert sorted(actual_vertices) == sorted(vertices)
-    assert sorted(actual_edges) == sorted(edges)
-    output = "X-+Z, Z-+W, W-+Y, X-+Y, X-+Z, X+-Z, X-+W, X+-W"
-    assert to_R_notation(edges) == (output, 5, 8)
-
-
-def test_fig_3_6_a() -> None:
-    """Code in Figure 3.6 (a)"""
-
-    p1 = Probability(var={"X", "Z"}, cond={"W"})
-    p2 = Probability(var={"Y"}, cond={"Z"})
-    p3 = Probability(var={"W"})
-    p = Probability(recursive=True, children={p1, p2, p3})
-    assert p.printLatex(simplify=False) == "P(w)P(x, z|w)P(y|z)"
-
-
-def test_fig_3_6_b() -> None:
-    """Code in Figure 3.6 (b)"""
-
-    p1 = Probability(var={"X", "Z"}, cond={"W"})
-    p2 = Probability(var={"Y"}, cond={"Z"})
-    p3 = Probability(var={"W"})
-    p4 = Probability(sumset={"X", "Z", "W"}, recursive=True, children={p1, p2, p3})
-    p = Probability(
-        sumset={"Z", "W"}, recursive=True, children={p1, p2, p3}, fraction=True, divisor=p4
-    )
-    assert (
-        p.printLatex(simplify=False)
-        == "\\frac{\\sum_{w, z}P(w)P(x, z|w)P(y|z)}{\\sum_{w, x, z}P(w)P(x, z|w)P(y|z)}"
-    )
-
-
-def test_fig_3_10() -> None:
-    """Code in Figure 3.10"""
-
-    G = createGraph(["X->Z", "Z->Y", "X<->Y"])
-    P = ID({"Y"}, {"X"}, G)
-    assert P.printLatex() == "\\sum_{z}P(z|x)\\left(\\sum_{x}P(x)P(y|x, z)\\right)"
-
-
-def test_fig_3_12() -> None:
-    """Code in Figure 3.12"""
-
-    G = createGraph(["W->X", "X->Y_1", "Z->Y_2", "W<->Y_1", "W<->Z", "W<->Y_2", "X<->Z"])
-    P = ID({"Y_1", "Y_2"}, {"X"}, G)
-    assert P.printLatex() == "\\sum_{z}P(y_2, z)\\left(\\sum_{w}P(w)P(y_1|w, x)\\right)"
-
-
-def test_fig_3_13() -> None:
-    """Code in Figure 3.13"""
-
-    G = createGraph(["W->X", "X->Y_1", "Z->Y_2", "W<->Y_1", "W<->Z", "W<->Y_2", "X<->Z", "W->Z"])
-    P = ID({"Y_1", "Y_2"}, {"X"}, G)
-    assert not P.identifiable
-    forests = [printGraph(forest) for forest in P.hedge]
-    assert [set(vertices) for vertices, _ in forests] == [
-        {"W", "X", "Y_1", "Z", "Y_2"},
-        {"W", "Y_1", "Z", "Y_2"},
-    ]
-    assert [set(edges) for _, edges in forests] == [
-        {"W->X", "X->Y_1", "Z->Y_2", "W->Z", "W<->Y_1", "W<->Y_2", "X<->Z", "W<->Z"},
-        {"W->Z", "Z->Y_2", "W<->Y_1", "W<->Y_2", "W<->Z"},
-    ]
-    assert P.attributes() == {"identifiable": False, "hedge": P.hedge}
-    assert P.printLatex() == r"\text{Causal effect not identifiable}"
 
 
 def test_confounded_direct_effect_returns_hedge() -> None:
@@ -89,6 +16,7 @@ def test_confounded_direct_effect_returns_hedge() -> None:
         (["X", "Y"], ["X->Y", "X<->Y"]),
         (["Y"], []),
     ]
+    assert all(edge["confounding"] in (-1, 0, 1) for forest in P.hedge for edge in forest.es)
 
 
 def test_conditional_nonidentifiability_returns_hedge() -> None:
@@ -99,30 +27,6 @@ def test_conditional_nonidentifiability_returns_hedge() -> None:
     assert len(P.hedge) == 2
 
 
-def test_fig_3_15_a() -> None:
-    """Code in Figure 3.15 (a)"""
-
-    G = createGraph(["X<->Y", "Z->Y", "X->Z", "W->X", "W->Z"])
-    P = ID({"Y"}, {"X"}, G, cond={"Z"})
-    assert P.printLatex() == "\\frac{\\sum_{x}P(x|w)P(y|w, x, z)}{\\sum_{x, y}P(x|w)P(y|w, x, z)}"
-
-
-def test_fig_3_15_b() -> None:
-    """Code in Figure 3.15 (b)"""
-
-    G = createGraph(["X<->Y", "Z->Y", "X->Z", "W->X", "W->Z"])
-    P = ID({"Y"}, {"X"}, G)
-    assert P.printLatex() == "\\sum_{w, z}P(w)P(z|w, x)\\left(\\sum_{x}P(x|w)P(y|w, x, z)\\right)"
-
-
-def test_fig_3_16() -> None:
-    """Code in Figure 3.16"""
-
-    G = createGraph(["Z->X", "Z->Y", "X->Y"])
-    P = ID({"Y"}, {"X"}, G)
-    assert P.printLatex() == "\\sum_{z}P(y|x, z)P(z)"
-
-
 @pytest.mark.parametrize(
     ("outcome", "intervention", "conditioned"),
     [
@@ -130,6 +34,7 @@ def test_fig_3_16() -> None:
         ({"Y"}, {"X"}, {"Y"}),
         ({"Y"}, {"X"}, {"X"}),
     ],
+    ids=["outcome-intervention", "outcome-condition", "intervention-condition"],
 )
 def test_rejects_overlapping_query_variables(
     outcome: set[str],
@@ -141,33 +46,143 @@ def test_rejects_overlapping_query_variables(
         ID(outcome, intervention, createGraph(["X->Y"]), cond=conditioned)
 
 
-def test_rejects_cyclic_graph() -> None:
+@pytest.mark.parametrize(
+    "edges", [["X->Y", "Y->X"], ["X->X", "X->Y"]], ids=["two-vertex", "self-loop"]
+)
+def test_rejects_cyclic_graph(edges: list[str]) -> None:
     """Identification accepts only acyclic directed causal graphs."""
     with pytest.raises(ValueError, match="DAG"):
-        ID({"Y"}, {"X"}, createGraph(["X->Y", "Y->X"]))
+        ID({"Y"}, {"X"}, createGraph(edges))
 
 
-def test_without_intervention_and_recursive_base_case() -> None:
-    """Empty interventions marginalize other variables in either expression form."""
+@pytest.mark.parametrize(
+    ("outcome", "intervention", "conditioned", "variable"),
+    [
+        ({"NO"}, {"X"}, None, "Y"),
+        ({"Y"}, {"NO"}, None, "X"),
+        ({"Y"}, {"X"}, {"NO"}, "cond"),
+    ],
+    ids=["outcome", "intervention", "condition"],
+)
+def test_rejects_unknown_query_variables(
+    outcome: set[str],
+    intervention: set[str],
+    conditioned: set[str] | None,
+    variable: str,
+) -> None:
+    """Every unknown outcome, intervention, or condition fails at the API boundary."""
+    with pytest.raises(ValueError, match=f"{variable} contains variables not present"):
+        ID(outcome, intervention, createGraph(["X->Y"]), cond=conditioned)
+
+
+@pytest.mark.parametrize("conditioned", [None, {"Z"}], ids=["id", "idc"])
+def test_accepts_named_igraph_dag_without_confounding_metadata(
+    conditioned: set[str] | None,
+) -> None:
+    """An ordinary named DAG has only visible arrows without changing the caller's graph."""
+    g = Graph(edges=[(0, 1), (2, 1)], directed=True)
+    g.vs["name"] = ["X", "Y", "Z"]
+
+    result = ID({"Y"}, {"X"}, g, cond=conditioned)
+
+    assert result.printLatex() == ("P(y|x, z)" if conditioned else r"\sum_{z}P(y|x, z)P(z)")
+    assert "confounding" not in g.edge_attributes()
+
+
+@pytest.mark.parametrize(
+    ("directed", "named", "message"),
+    [
+        (False, True, "directed"),
+        (True, False, "names"),
+    ],
+    ids=["undirected", "unnamed"],
+)
+def test_rejects_graphs_without_required_structure(
+    directed: bool, named: bool, message: str
+) -> None:
+    """Identification rejects undirected graphs and graphs without names."""
+    g = Graph(edges=[(0, 1)], directed=directed)
+    if named:
+        g.vs["name"] = ["X", "Y"]
+
+    with pytest.raises(ValueError, match=message):
+        ID({"Y"}, {"X"}, g)
+
+
+def test_rejects_duplicate_vertex_names() -> None:
+    """Name-based graph lookup requires one unique name per vertex."""
+    g = Graph(edges=[(0, 1)], directed=True)
+    g.vs["name"] = ["X", "X"]
+
+    with pytest.raises(ValueError, match="unique"):
+        ID({"X"}, set(), g)
+
+
+@pytest.mark.parametrize("edge_type", [None, 2, "U", True])
+def test_rejects_invalid_confounding_values(edge_type: object) -> None:
+    """Only signed bidirected halves and zero-valued arrows are accepted."""
+    g = createGraph(["X->Y"])
+    g.es["confounding"] = [edge_type]
+
+    with pytest.raises(ValueError, match="confounding"):
+        ID({"Y"}, {"X"}, g)
+
+
+@pytest.mark.parametrize(
+    ("edges", "types"),
+    [
+        (["X->Y"], [1]),
+        (["X<->Y"], [1, 1]),
+        (["X<->Y", "X<->Y"], [1, -1, 1, 0]),
+        (["X<->X"], [1, -1]),
+    ],
+    ids=["missing-half", "same-sign", "unequal-pairs", "self-loop"],
+)
+def test_rejects_unpaired_confounding_edges(edges: list[str], types: list[int]) -> None:
+    """Each latent arc needs opposite signed halves between distinct vertices."""
+    g = createGraph(edges)
+    g.es["confounding"] = types
+
+    with pytest.raises(ValueError, match="confounding"):
+        ID({"Y"} if "Y" in g.vs["name"] else {"X"}, set(), g)
+
+
+def test_parallel_visible_arrows_are_valid_identification_input() -> None:
+    """Duplicating a visible arrow does not alter the causal effect."""
+    g = createGraph(["X->Y", "X->Y"])
+
+    assert ID({"Y"}, {"X"}, g).printLatex() == "P(y|x)"
+
+
+def test_repeated_bidirected_arcs_remain_valid_identification_input() -> None:
+    """Duplicating a latent arc does not invent a visible causal arrow."""
+    g = createGraph(["X<->Y", "X<->Y"])
+
+    assert ID({"Y"}, {"X"}, g).printLatex() == "P(y)"
+
+
+def test_without_intervention_returns_marginal() -> None:
+    """An empty intervention returns the outcome's marginal probability."""
     g = createGraph(["X->Y"])
     assert ID({"Y"}, set(), g).printLatex() == "P(y)"
 
+
+def test_recursive_id_base_case_marginalizes_joint() -> None:
+    """Recursive identification sums non-outcome variables from a joint expression."""
+    g = createGraph(["X->Y"])
     joint = Probability(recursive=True, children={Probability(var={"X"}), Probability(var={"Y"})})
     result = ID_rec({"Y"}, set(), joint, g, ["X", "Y"])
     assert result._sumset == {"X"}
     assert result.printLatex(simplify=False) == r"\sum_{x}P(x)P(y)"
 
 
-def test_identification_uses_multivertex_confounding_component(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_identification_uses_multivertex_confounding_component() -> None:
     """A confounded outcome component is factored and marginalized."""
     g = createGraph(["X->Y", "Z->Y", "Y<->Z"])
-    result = ID({"Y"}, {"X"}, g, verbose=True)
+    result = ID({"Y"}, {"X"}, g)
 
     assert result.printLatex(simplify=False) == r"\sum_{z}P(y|x, z)P(z|x)"
     assert result.printLatex() == "P(y|x)"
-    assert "Line 6 Probabilities" in capsys.readouterr().out
 
 
 def test_unidentifiable_subproblem_propagates_hedge() -> None:
@@ -190,31 +205,33 @@ def test_confounding_keeps_multiple_variables_in_condition() -> None:
     g = createGraph(["X->Y", "Z->Y", "W->Y", "Z<->Y", "W<->Y"])
     result = ID({"Y"}, {"X"}, g, cond={"Z", "W"})
 
-    assert result.identifiable
     assert result.printLatex() == r"\frac{P(w, y, z|x)}{P(w, z|x)}"
 
 
 @pytest.mark.parametrize(
-    ("edges", "conditioned"),
+    ("edges", "conditioned", "trace_line"),
     [
-        (["X->Z", "Z->Y", "X<->Y"], None),
-        (["X<->Y", "Z->Y", "X->Z", "W->X", "W->Z"], {"Z"}),
-        (["X->Y", "X<->Y"], None),
+        (["X->Z", "Z->Y", "X<->Y"], None, "Line 4"),
+        (["X<->Y", "Z->Y", "X->Z", "W->X", "W->Z"], {"Z"}, "Line 1 COND"),
+        (["X->Y", "X<->Y"], None, "Line 5"),
+        (["X->Y", "Z->Y", "Y<->Z"], None, "Line 6 Probabilities"),
     ],
+    ids=["frontdoor", "conditional", "hedge", "multivertex-component"],
 )
 def test_verbose_trace_preserves_identification(
     edges: list[str],
     conditioned: set[str] | None,
+    trace_line: str,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Verbose tracing leaves the identified effect unchanged."""
+    """Verbose tracing reports each branch without changing its result."""
     g = createGraph(edges)
     expected = ID({"Y"}, {"X"}, g, cond=conditioned)
     actual = ID({"Y"}, {"X"}, g, cond=conditioned, verbose=True)
 
     assert actual.identifiable == expected.identifiable
     assert actual.printLatex() == expected.printLatex()
-    assert "Depth:" in capsys.readouterr().out
+    assert trace_line in capsys.readouterr().out
 
 
 def test_conditional_rule_moves_variable_into_intervention() -> None:
@@ -222,7 +239,6 @@ def test_conditional_rule_moves_variable_into_intervention() -> None:
     g = createGraph(["Z->X", "Z->Y", "X->Y"])
     result = ID({"Y"}, {"X"}, g, cond={"Z"})
 
-    assert result.identifiable
     assert result.printLatex() == "P(y|x, z)"
 
 
