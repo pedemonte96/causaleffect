@@ -9,9 +9,7 @@ from igraph import Graph
 
 # Define a probability distribution class
 class Probability:
-    """Probability distribution class. If recursive is set to True, var and cond are ignored
-    and it becomes a product of probabilities in children. If fraction is set to True, the
-    divisor is enabled. A hedge marks a non-identifiable effect."""
+    """P(var | cond); recursive uses children; fraction uses divisor; hedge means unidentifiable."""
 
     def __init__(
         self,
@@ -48,7 +46,7 @@ class Probability:
         """Function that shows all attributes of the probability distribution."""
         if not self.identifiable:
             return {"identifiable": False, "hedge": self.hedge}
-        out = {}
+        out: dict[str, object] = {}
         out["var"] = self._var
         out["cond"] = self._cond
         out["recursive"] = self._recursive
@@ -59,6 +57,7 @@ class Probability:
         out["sumset"] = self._sumset
         out["fraction"] = self._fraction
         if self._fraction:
+            assert self._divisor is not None
             out["divisor"] = self._divisor.attributes()
         else:
             out["divisor"] = self._divisor
@@ -66,7 +65,7 @@ class Probability:
 
     def getFreeVariables(self) -> set[str]:
         """Function that returns the free variables of the distribution."""
-        free = set()
+        free: set[str] = set()
         if not self._recursive:
             free = free.union(self._var)
         else:
@@ -74,6 +73,7 @@ class Probability:
                 free = free.union(prob.getFreeVariables())
         free = free.difference(self._sumset)
         if self._fraction:
+            assert self._divisor is not None
             free = free.union(self._divisor.getFreeVariables())
         return free
 
@@ -88,16 +88,17 @@ class Probability:
                 self._sumset = self._sumset.difference(sum_variables)
                 self._var = self._var.difference(sum_variables)
 
-                if self._fraction and not self._divisor._recursive:
-                    sum_variables = self._divisor._sumset.intersection(self._divisor._var)
-                    self._divisor._sumset = self._divisor._sumset.difference(sum_variables)
-                    self._divisor._var = self._divisor._var.difference(sum_variables)
-                    if len(self._divisor._var) == 0:
+                if self._fraction and self._divisor is not None and not self._divisor._recursive:
+                    divisor = self._divisor
+                    sum_variables = divisor._sumset.intersection(divisor._var)
+                    divisor._sumset = divisor._sumset.difference(sum_variables)
+                    divisor._var = divisor._var.difference(sum_variables)
+                    if len(divisor._var) == 0:
                         self._divisor = None
                         self._fraction = False
-                    elif len(self._divisor._cond) == 0 and self._divisor._var.issubset(self._var):
-                        self._var = self._var.difference(self._divisor._var)
-                        self._cond = self._cond.union(self._divisor._var)
+                    elif len(divisor._cond) == 0 and divisor._var.issubset(self._var):
+                        self._var = self._var.difference(divisor._var)
+                        self._cond = self._cond.union(divisor._var)
                         self._divisor = None
                         self._fraction = False
             elif complete:
@@ -181,6 +182,7 @@ class Probability:
             out += "\\right)"
         if self._fraction:
             out += "}{"
+            assert self._divisor is not None
             out += self._divisor.printLatex(
                 simplify=simplify, complete_simplification=complete_simplification, verbose=verbose
             )
@@ -189,7 +191,7 @@ class Probability:
 
     def decouple(self) -> Probability:
         """Flatten nested products when no summation blocks simplification."""
-        new_children = set()
+        new_children: set[Probability] = set()
         decouple = False
         if self._recursive:
             for p in self._children:

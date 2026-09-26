@@ -340,8 +340,7 @@ def ID(
     cond: set[str] | None = None,
     verbose: bool = False,
 ) -> Probability:
-    """Identification algorithm. If some conditional variables are inputted, then IDC is called.
-    Otherwise, ID_rec is called."""
+    """Identify an effect, returning a probability expression or a hedge."""
 
     cond = set() if cond is None else cond
     if len(Y.intersection(X)) + len(Y.intersection(cond)) + len(X.intersection(cond)) != 0:

@@ -11,10 +11,10 @@ from igraph.drawing import Plot
 
 
 def plotGraph(g: Graph, name: str | None = None) -> Plot:
-    """Function that plots a graph. Requires the pycairo library."""
+    """Plot a graph, saving `name.png` when a name is given; requires Cairo."""
 
     color_dict = {0: "blue", 1: "#008833"}
-    visual_style = {}
+    visual_style: dict[str, object] = {}
     visual_style["vertex_label_dist"] = 2
     visual_style["vertex_size"] = 20
     visual_style["vertex_label"] = g.vs["name"]
@@ -95,7 +95,7 @@ def get_ancestors(g: Graph, v_name: str | set[str]) -> set[str]:
 
     if not g.is_dag():
         raise ValueError("Graph contains a cycle")
-    ancestors = []
+    ancestors: list[str] = []
     if isinstance(v_name, set):
         for e in v_name:
             ancestors += get_ancestors(g, e)
@@ -124,7 +124,7 @@ def get_descendants(g: Graph, v_name: str | set[str]) -> set[str]:
 
     if not g.is_dag():
         raise ValueError("Graph contains a cycle")
-    descendants = []
+    descendants: list[str] = []
     if isinstance(v_name, set):
         for e in v_name:
             descendants += get_descendants(g, e)
@@ -180,9 +180,9 @@ def check_subgraph(g1: Graph, g2: Graph) -> bool:
 
 
 def createGraph(list_edges_string: Iterable[str], verbose: bool = False) -> Graph:
-    """Creates a graph from a list of edges in string-format."""
+    """Build a causal graph from `->`, `<-`, and `<->` edge strings."""
 
-    vertices = []
+    vertices: list[str] = []
     edges = []
     confounding = []
     for edge in list_edges_string:
@@ -229,8 +229,7 @@ def createGraph(list_edges_string: Iterable[str], verbose: bool = False) -> Grap
 
 
 def to_R_notation(edges: list[str]) -> tuple[str, int, int]:
-    """Function that, given a list of strings containing the edges of a graph, returns
-    the equivalent graph information for causaleffect package in R."""
+    """Convert edge strings to R causaleffect notation, modifying the input list."""
 
     # ["X->Y", "X<-A", "X<-E", "X<-V", "Y<-A", "Y<-H_1", "Y<-G", "Y<-V",
     #  "Y<-H", "Y<-E", "H->V", "V->E"]
@@ -380,7 +379,7 @@ def is_path_d_separated(G: Graph, p: list[int], cond: set[str], verbose: bool = 
 
 
 def printGraph(G: Graph) -> tuple[list[str], list[str]]:
-    """Function that returns a tuple with list of nodes and a list of edges of the graph."""
+    """Return the node names and directed or bidirected edge strings of a graph."""
 
     edges = []
     confounded = []
