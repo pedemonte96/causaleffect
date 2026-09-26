@@ -88,15 +88,25 @@ class Probability:
                 self._sumset = self._sumset.difference(sum_variables)
                 self._var = self._var.difference(sum_variables)
 
-                if self._fraction and self._divisor is not None and not self._divisor._recursive:
+                if (
+                    self._fraction
+                    and self._divisor is not None
+                    and not self._divisor._recursive
+                    and not self._divisor._fraction
+                ):
                     divisor = self._divisor
                     sum_variables = divisor._sumset.intersection(divisor._var)
                     divisor._sumset = divisor._sumset.difference(sum_variables)
                     divisor._var = divisor._var.difference(sum_variables)
-                    if len(divisor._var) == 0:
+                    if not divisor._var and not divisor._sumset:
                         self._divisor = None
                         self._fraction = False
-                    elif len(divisor._cond) == 0 and divisor._var.issubset(self._var):
+                    elif (
+                        not self._sumset
+                        and not divisor._sumset
+                        and divisor._cond == self._cond
+                        and divisor._var.issubset(self._var)
+                    ):
                         self._var = self._var.difference(divisor._var)
                         self._cond = self._cond.union(divisor._var)
                         self._divisor = None
@@ -108,6 +118,10 @@ class Probability:
                         if (
                             not prob1._recursive
                             and not prob2._recursive
+                            and not prob1._fraction
+                            and not prob2._fraction
+                            and not prob1._sumset
+                            and not prob2._sumset
                             and prob1 != prob2
                             and prob1._cond == prob2._var.union(prob2._cond)
                         ):
@@ -131,13 +145,22 @@ class Probability:
                         self._recursive = False
                         self._children = set()
 
+    def _sort_key(self) -> tuple[bool, str, str]:
+        """Return a stable structural key that keeps empty variable factors last."""
+        structure = (
+            tuple(sorted(self._var)),
+            tuple(sorted(self._cond)),
+            tuple(sorted(self._sumset)),
+            self._recursive,
+            tuple(sorted(child._sort_key() for child in self._children)),
+            self._fraction,
+            self._divisor._sort_key() if self._divisor else (),
+        )
+        return (not self._var, min(self._var, default=""), repr(structure))
+
     def __lt__(self, other: Probability) -> bool:
-        """Function that enables alphabetical sorting of variables."""
-        if len(other._var) == 0:
-            return True
-        if len(self._var) == 0:
-            return False
-        return min(self._var) < min(other._var)
+        """Order probability factors deterministically."""
+        return self._sort_key() < other._sort_key()
 
     def printLatex(
         self,
@@ -195,7 +218,7 @@ class Probability:
         decouple = False
         if self._recursive:
             for p in self._children:
-                if p._recursive and len(p._sumset) == 0:
+                if p._recursive and len(p._sumset) == 0 and not p._fraction:
                     decouple = True
                     subdec = p.decouple()
                     new_children = new_children.union(subdec._children)

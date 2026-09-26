@@ -1,9 +1,9 @@
 """Graph construction and causal graph utilities."""
 
 import re
+from collections import Counter
 from collections.abc import Iterable
 
-import numpy as np
 from igraph import Graph, plot
 from igraph.drawing import Plot
 
@@ -29,50 +29,41 @@ def plotGraph(g: Graph, name: str | None = None) -> Plot:
     return plot(g, **visual_style)
 
 
-def get_directed_bidirected_graphs(g: Graph) -> tuple[Graph, Graph]:
-    """Function that, given a graph, it decouples it and returns confounded graph
-    and a graph with visible causations."""
+def _typed_graph(g: Graph) -> Graph:
+    """Treat edges without type metadata as visible arrows on a copy."""
+    if "confounding" in g.edge_attributes():
+        return g
+    typed = g.copy()
+    typed.es["confounding"] = [0] * typed.ecount()
+    return typed
 
-    adj_bidir = np.asarray(g.get_adjacency().data) + np.asarray(g.get_adjacency().data).T
-    adj_bidir[adj_bidir < 2] = 0
-    adj_bidir[adj_bidir >= 2] = 1
-    adj_dir = np.asarray(g.get_adjacency().data) - adj_bidir
-    g_dir = Graph.Adjacency(adj_dir.tolist())
-    g_bidir = Graph.Adjacency(adj_bidir.tolist())
-    g_dir.vs["name"] = g.vs["name"]
-    g_bidir.vs["name"] = g.vs["name"]
-    confounding_dir = [0 for edge in g_dir.es]
-    confounding_bidir = []
-    for edge in g_bidir.es:
-        if edge.source_vertex["name"] < edge.target_vertex["name"]:
-            confounding_bidir.append(-1)
-        else:
-            confounding_bidir.append(1)
-    g_bidir.es["confounding"] = confounding_bidir
-    g_dir.es["confounding"] = confounding_dir
-    return g_dir, g_bidir
+
+def get_directed_bidirected_graphs(g: Graph) -> tuple[Graph, Graph]:
+    """Split visible arrows and bidirected arcs without changing their attributes."""
+    g = _typed_graph(g)
+    directed = [edge.index for edge in g.es if edge["confounding"] == 0]
+    bidirected = [edge.index for edge in g.es if edge["confounding"] != 0]
+    return (
+        g.subgraph_edges(directed, delete_vertices=False),
+        g.subgraph_edges(bidirected, delete_vertices=False),
+    )
 
 
 def get_C_components(g: Graph) -> list[Graph]:
-    """Function that returs the different C-components of a graph."""
-
-    g_dir, g_bidir = get_directed_bidirected_graphs(g)
-    g_out = g_bidir.copy()
-    for e in g_dir.es:
-        if e.target_vertex.index in g_bidir.subcomponent(e.source_vertex.index):
-            g_out.add_edge(e.source_vertex.index, e.target_vertex.index)
-    return g_out.decompose()
+    """Return original induced subgraphs grouped by bidirected connectivity."""
+    g = _typed_graph(g)
+    _g_dir, g_bidir = get_directed_bidirected_graphs(g)
+    return [g.induced_subgraph(vertices) for vertices in g_bidir.connected_components(mode="weak")]
 
 
 def get_vertices_no_parents(g: Graph) -> set[str]:
     """Function that returns the set of vertices without parents"""
-
-    degrees = g.degree(mode="in")
-    vertices = []
-    for i in range(len(degrees)):
-        if degrees[i] == 0:
-            vertices.append(g.vs[i]["name"])
-    return set(vertices)
+    directed, _bidirected = get_directed_bidirected_graphs(g)
+    return {
+        name
+        for name, degree in zip(directed.vs["name"], directed.degree(mode="in"), strict=True)
+        if degree == 0
+    }
 
 
 def get_topological_ordering(g: Graph) -> list[str]:
@@ -155,28 +146,31 @@ def graphs_are_equal(g1: Graph, g2: Graph) -> bool:
 
 def check_subcomponent(subcomponent: Graph, components: Iterable[Graph]) -> bool:
     """Function that checks if a graph is part of a set of graphs"""
+    names = set(subcomponent.vs["name"])
+    return any(names == set(g.vs["name"]) for g in components)
 
-    return any(graphs_are_equal(subcomponent, g) for g in components)
+
+def _causal_edge_counts(g: Graph) -> Counter[tuple[bool, str, str]]:
+    """Count visible arrows and encoded bidirected halves by causal edge type."""
+    counts: Counter[tuple[bool, str, str]] = Counter()
+    for edge in _typed_graph(g).es:
+        source = edge.source_vertex["name"]
+        target = edge.target_vertex["name"]
+        bidirected = edge["confounding"] != 0
+        if bidirected:
+            source, target = sorted((source, target))
+        counts[(bidirected, source, target)] += 1
+    return counts
 
 
 def check_subgraph(g1: Graph, g2: Graph) -> bool:
     """Function that checks ig a graph g1 is a subgraph of g2"""
 
-    # Check that g1<g2
-    g1_vertices = set(g1.vs["name"])
-    g2_vertices = set(g2.vs["name"])
-    if not g1_vertices.issubset(g2_vertices):
+    # Check that g1 is included in g2.
+    if not set(g1.vs["name"]).issubset(g2.vs["name"]):
         return False
-    if len(g1.es) > len(g2.es):
-        return False
-    # check edges g1 included in g2
-    for edge in g1.es:
-        source = edge.source_vertex["name"]
-        target = edge.target_vertex["name"]
-        outgoing_vertices = g2.vs(g2.neighbors(g2.vs.find(name=source), mode="out"))["name"]
-        if target not in outgoing_vertices:
-            return False
-    return True
+    # Check edge multiplicity and causal type.
+    return not (_causal_edge_counts(g1) - _causal_edge_counts(g2))
 
 
 def createGraph(list_edges_string: Iterable[str], verbose: bool = False) -> Graph:
@@ -257,30 +251,21 @@ def unobserved_graph(g: Graph) -> Graph:
     """Constructs a causal diagram where confounded variables have explicit unmeasurable nodes
     from a DAG of bidirected edges"""
 
-    G = g.copy()
-    vertices = G.vs["name"]
-    delete_edges = []
-    add_edges = []
-    for e in G.es:
-        if e["confounding"] != 0:
-            delete_edges.append(e.index)
-            if e["confounding"] == 1:
-                new_vertex_name = G.vs[e.source]["name"] + G.vs[e.target]["name"]
-            if e["confounding"] == -1:
-                new_vertex_name = G.vs[e.target]["name"] + G.vs[e.source]["name"]
-            src = -1
-            if new_vertex_name in vertices:
-                src = vertices.index(new_vertex_name)
-            else:
-                src = len(vertices)
-                vertices.append(new_vertex_name)
-                G.add_vertices(1)
-                G.vs[-1]["name"] = new_vertex_name
-            add_edges.append((src, e.target))
-    G.add_edges(add_edges)
-    G.delete_edges(delete_edges)
-    G.es["confounding"] = [0 for i in G.es]
-
+    G = _typed_graph(g).copy()
+    hidden = [edge for edge in G.es if edge["confounding"] != 0]
+    pairs = sorted({tuple(sorted(edge.tuple)) for edge in hidden})
+    names = set(G.vs["name"])
+    next_index = 1
+    for source, target in pairs:
+        while f"U_{next_index}" in names:
+            next_index += 1
+        name = f"U_{next_index}"
+        names.add(name)
+        next_index += 1
+        G.add_vertex(name=name)
+        G.add_edges([(G.vcount() - 1, source), (G.vcount() - 1, target)])
+    G.delete_edges([edge.index for edge in hidden])
+    G.es["confounding"] = [0] * G.ecount()
     return G
 
 
@@ -341,9 +326,7 @@ def is_path_d_separated(G: Graph, p: list[int], cond: set[str], verbose: bool = 
             or (e1 == "l" and e2 == "r")
             or (e1 == "l" and e2 == "b")
             or (e1 == "b" and e2 == "r")
-        ) and G.vs[p[i + 1]][
-            "name"
-        ] in cond:  # -> -> // <- <- // <- -> // <- <-> // <-> ->
+        ) and G.vs[p[i + 1]]["name"] in cond:  # -> -> // <- <- // <- -> // <- <-> // <-> ->
             if verbose:
                 print(
                     "is_path_d_separated: Chain or Fork:",

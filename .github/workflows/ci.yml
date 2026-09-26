@@ -2,13 +2,22 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+      - dev
+
   pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   quality:
+    name: Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +36,7 @@ jobs:
       - run: python -m twine check dist/*
 
   test:
+    name: Test · ${{ matrix.os }} · Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

@@ -1,6 +1,6 @@
 # API guide
 
-The public API is available from `import causaleffect`. Install NumPy alongside `causaleffect` for graph processing. The [generated API reference](https://pedemonte96.github.io/causaleffect/causaleffect.html) has the full signatures and type annotations.
+The public API is available from `import causaleffect`. The [generated API reference](https://pedemonte96.github.io/causaleffect/causaleffect.html) has the full signatures and type annotations.
 
 ## Graphs
 

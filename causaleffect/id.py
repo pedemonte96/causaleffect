@@ -1,10 +1,12 @@
 """Causal effect identification algorithms."""
 
+from collections import Counter
+
 from igraph import Graph
 
 from causaleffect.graph import (
+    _typed_graph,
     check_subcomponent,
-    check_subgraph,
     dSep,
     get_ancestors,
     get_C_components,
@@ -96,17 +98,9 @@ def ID_rec(
         )
 
     # line 3
-    G_x = G.copy()
-    # Remove both directions of confounding edges incident to X.
-    G_x.delete_edges(
-        [
-            edge.index
-            for edge in G_x.es
-            if edge.target_vertex["name"] in X
-            or (edge["confounding"] and edge.source_vertex["name"] in X)
-        ]
-    )
-    G_x_dir, _G_x_bidir = get_directed_bidirected_graphs(G_x)
+    G_x_dir = G_dir.copy()
+    # Remove visible arrows into X before computing directed ancestors.
+    G_x_dir.delete_edges(G_x_dir.es.select(_target_in=G_x_dir.vs.select(name_in=X)))
     anc_x = get_ancestors(G_x_dir, Y)
     W = V.difference(X).difference(anc_x)
     if len(W) != 0:
@@ -191,9 +185,10 @@ def ID_rec(
         return Probability(recursive=True, children=probabilities, sumset=S.difference(Y))
 
     # line 7
+    subcomponent_vertices = set(C_components_V_X[0].vs["name"])
     for component in C_components:
-        if check_subgraph(C_components_V_X[0], component):
-            S_comp = set(component.vs["name"])
+        S_comp = set(component.vs["name"])
+        if subcomponent_vertices.issubset(S_comp):
             if verbose:
                 print("Depth:", tab, "Line 7 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
             if verbose:
@@ -343,8 +338,35 @@ def ID(
     """Identify an effect, returning a probability expression or a hedge."""
 
     cond = set() if cond is None else cond
+    if not G.is_directed():
+        raise ValueError("Graph must be directed.")
+    if "name" not in G.vertex_attributes() or any(
+        not isinstance(name, str) or not name for name in G.vs["name"]
+    ):
+        raise ValueError("Graph vertices must have names.")
+    names = G.vs["name"]
+    if len(set(names)) != len(names):
+        raise ValueError("Graph vertex names must be unique.")
+    vertices = set(names)
+    for label, variables in (("Y", Y), ("X", X), ("cond", cond)):
+        if not variables.issubset(vertices):
+            raise ValueError(f"{label} contains variables not present in the graph.")
     if len(Y.intersection(X)) + len(Y.intersection(cond)) + len(X.intersection(cond)) != 0:
         raise ValueError("Intersection of variables not empty.")
+    if "confounding" in G.edge_attributes():
+        if any(type(value) is not int or value not in (-1, 0, 1) for value in G.es["confounding"]):
+            raise ValueError("Invalid confounding edge value.")
+        halves = Counter(
+            (edge.source, edge.target, edge["confounding"])
+            for edge in G.es
+            if edge["confounding"] != 0
+        )
+        if any(
+            source == target or count != halves[(target, source, -sign)]
+            for (source, target, sign), count in halves.items()
+        ):
+            raise ValueError("Invalid confounding edge pairing.")
+    G = _typed_graph(G)
     G_dir, _G_bidir = get_directed_bidirected_graphs(G)
     if not G_dir.is_dag():
         raise ValueError("Entered graph is not a DAG.")

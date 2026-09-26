@@ -6,7 +6,7 @@
 
 - Require Python 3.11 or newer; PyPI 0.0.2 supported Python 3.7 or newer.
 - Move all package metadata and dependencies to `pyproject.toml`, with an optional plotting extra.
-- Depend on `igraph` directly; NumPy is still required for graph processing.
+- Depend on `igraph` directly without requiring NumPy.
 
 ### Added
 
@@ -18,6 +18,8 @@
 
 - Reject malformed graph edge strings.
 - Handle arbitrary node names and return a hedge for non-identifiable effects.
+- Preserve causal edge types and attributes, validate identification inputs, and avoid latent-name collisions.
+- Keep probability simplification mathematically sound for conditional ratios, nested fractions, and summed factors.
 
 ## [0.0.2](https://github.com/pedemonte96/causaleffect/tree/0.0.2) (2021-06-19)
 
