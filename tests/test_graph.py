@@ -179,6 +179,12 @@ def test_create_graph_verbose_reports_vertices(capsys: pytest.CaptureFixture[str
     assert "'X'" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("edge", ["Ab->Qb", "A_->Q_D", "0->1", "_A->Q_"])
+def test_create_graph_accepts_arbitrary_variable_names(edge: str) -> None:
+    """Graph construction accepts the variable names from issue #6."""
+    assert graph.createGraph([edge]).ecount() == 1
+
+
 @pytest.mark.parametrize("edge", ["X-Y", "->Y", "X->", "X->Y->Z"])
 def test_invalid_edge_is_rejected(edge: str) -> None:
     """Malformed edge strings raise a helpful error."""
