@@ -4,6 +4,7 @@ authors:
   - family-names: Pedemonte
     given-names: Martí
 title: causaleffect
+version: 0.1.0
 repository-code: https://github.com/pedemonte96/causaleffect
 preferred-citation:
   type: report

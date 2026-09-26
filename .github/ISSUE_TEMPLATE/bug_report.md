@@ -24,8 +24,10 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment:**
- - OS: [e.g. Ubuntu 18.04.4 LTS]
- - Library dependency versions (e.g. igraph==0.8.3); see requirements.txt for the required libraries.
+ - causaleffect version:
+ - Python version:
+ - OS:
+ - Relevant dependency versions (igraph and, for plotting, pycairo or cairocffi):
 
 **Additional context**
 Add any other context about the problem here.
