@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0
+## [0.1.0](https://github.com/pedemonte96/causaleffect/releases/tag/v0.1.0)
 
 ### Changed
 
@@ -10,7 +10,7 @@
 
 ### Added
 
-- Type annotations, a `py.typed` marker, regression coverage, Ruff and mypy checks.
+- Type annotations, a `py.typed` marker, citation metadata, regression coverage, Ruff and mypy checks.
 - CI on Python 3.11–3.14, coverage reports, trusted PyPI publishing, and generated API docs.
 - An API guide, runnable examples, and a repeatable benchmark.
 
@@ -18,8 +18,9 @@
 
 - Reject malformed graph edge strings.
 - Handle arbitrary node names and return a hedge for non-identifiable effects.
-- Preserve causal edge types and attributes, validate identification inputs, and avoid latent-name collisions.
-- Keep probability simplification mathematically sound for conditional ratios, nested fractions, and summed factors.
+- Preserve causal edge types, attributes, and multiplicity when splitting graphs and building C-components; correct parent and subgraph helpers.
+- Validate identification inputs and avoid latent-name collisions.
+- Preserve conditional ratios, nested fractions, and summed factors during probability simplification, with deterministic factor ordering.
 
 ## [0.0.2](https://github.com/pedemonte96/causaleffect/tree/0.0.2) (2021-06-19)
 

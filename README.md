@@ -4,13 +4,17 @@
 
 ## Installation
 
-The examples below use version 0.1.0, which requires Python 3.11 or newer. Before it is published on PyPI, run this from the root of a checkout of this branch:
+Version 0.1.0 requires Python 3.11 or newer:
 
 ```bash
-python -m pip install ".[plot]"
+python -m pip install "causaleffect==0.1.0"
 ```
 
-After publication, install it with `python -m pip install "causaleffect[plot]==0.1.0"` if you need graph plotting, or omit `[plot]` otherwise.
+For `plotGraph`, install the plotting extra:
+
+```bash
+python -m pip install "causaleffect[plot]==0.1.0"
+```
 
 For Python 3.7–3.10, install the [0.0.2 release](https://pypi.org/project/causaleffect/0.0.2/) instead:
 
@@ -68,8 +72,8 @@ Start with the [quickstart script](https://github.com/pedemonte96/causaleffect/b
 
 Other examples from the dissertation:
 
-| Figure number   | Example file                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
+| Figure number   | Example file                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------- |
 | Figure 3.5 (a)  | [`example_1.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_1.py) |
 | Figure 3.6 (a)  | [`example_2.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_2.py) |
 | Figure 3.6 (b)  | [`example_3.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_3.py) |
