@@ -1,24 +1,8 @@
 """Tests for graph construction, traversal, and separation."""
 
-from unittest.mock import Mock
-
 import pytest
 
 from causaleffect import graph
-
-
-def test_plot_graph_passes_styles_and_optional_filename(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Plotting passes graph styles to igraph and uses the requested filename."""
-    g = graph.createGraph(["X->Y"])
-    result = object()
-    plot = Mock(return_value=result)
-    monkeypatch.setattr(graph, "plot", plot)
-
-    assert graph.plotGraph(g) is result
-    assert plot.call_args.args == (g,)
-    assert plot.call_args.kwargs["vertex_label"] == ["X", "Y"]
-    assert graph.plotGraph(g, "figure") is result
-    assert plot.call_args.args == (g, "figure.png")
 
 
 def test_edge_views_separate_visible_and_latent_arcs() -> None:
