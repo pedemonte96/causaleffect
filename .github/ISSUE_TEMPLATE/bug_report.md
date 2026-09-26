@@ -27,7 +27,7 @@ If applicable, add screenshots to help explain your problem.
  - causaleffect version:
  - Python version:
  - OS:
- - Relevant dependency versions (igraph, NumPy, and, for plotting, pycairo or cairocffi):
+ - Relevant dependency versions (igraph and, for plotting, pycairo or cairocffi):
 
 **Additional context**
 Add any other context about the problem here.

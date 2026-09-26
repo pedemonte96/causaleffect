@@ -11,13 +11,13 @@ Use Python 3.11 or newer. From the repository root, install the package and deve
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]" numpy
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m ruff format --check .
 .\.venv\Scripts\python.exe -m mypy
 .\.venv\Scripts\python.exe -m pytest --cov=causaleffect --cov-report=term-missing
 .\.venv\Scripts\python.exe -m build
-.\.venv\Scripts\python.exe -m twine check dist/*
+.\.venv\Scripts\python.exe -m twine check dist/*.whl dist/*.tar.gz
 .\.venv\Scripts\python.exe -m pdoc causaleffect -o site
 .\.venv\Scripts\python.exe benchmarks/benchmark.py
 ```

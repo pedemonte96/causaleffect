@@ -4,11 +4,13 @@
 
 ## Installation
 
-For Python 3.11 or newer, install the current release from PyPI:
+The examples below use version 0.1.0, which requires Python 3.11 or newer. Before it is published on PyPI, run this from the root of a checkout of this branch:
 
 ```bash
-python -m pip install causaleffect
+python -m pip install ".[plot]"
 ```
+
+After publication, install it with `python -m pip install "causaleffect[plot]==0.1.0"` if you need graph plotting, or omit `[plot]` otherwise.
 
 For Python 3.7–3.10, install the [0.0.2 release](https://pypi.org/project/causaleffect/0.0.2/) instead:
 
@@ -16,11 +18,7 @@ For Python 3.7–3.10, install the [0.0.2 release](https://pypi.org/project/caus
 python -m pip install "causaleffect==0.0.2"
 ```
 
-Its source is preserved in the [0.0.2 Git tag](https://github.com/pedemonte96/causaleffect/tree/0.0.2). Python 3.11+ users can also pin that version. For `plotGraph` in 0.1.0, install the plotting extra:
-
-```bash
-python -m pip install "causaleffect[plot]"
-```
+Its source is preserved in the [0.0.2 Git tag](https://github.com/pedemonte96/causaleffect/tree/0.0.2). Python 3.11+ users can also pin that version.
 
 For plotting with 0.0.2, install `pycairo` or `cairocffi` separately.
 
