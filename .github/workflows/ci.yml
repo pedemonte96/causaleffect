@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m mypy
+      - run: python examples/quickstart.py
+      - run: python -m pdoc causaleffect -o site
+      - run: python -m build
+      - run: python -m twine check dist/*
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python-version: "3.11" }
+          - { os: ubuntu-latest, python-version: "3.12" }
+          - { os: ubuntu-latest, python-version: "3.13" }
+          - { os: ubuntu-latest, python-version: "3.14" }
+          - { os: windows-latest, python-version: "3.14" }
+          - { os: macos-latest, python-version: "3.14" }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest --cov=causaleffect --cov-report=term-missing --cov-report=xml
+      - if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+        run: python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+      - if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage.xml
