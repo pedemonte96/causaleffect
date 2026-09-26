@@ -1,165 +1,307 @@
-from causaleffect.probability import *
-from causaleffect.graph import *
+"""Causal effect identification algorithms."""
+
+from collections import Counter
+
+from igraph import Graph
+
+from causaleffect.graph import (
+    _typed_graph,
+    check_subcomponent,
+    dSep,
+    get_ancestors,
+    get_C_components,
+    get_directed_bidirected_graphs,
+    get_previous_order,
+    get_topological_ordering,
+    printGraph,
+    unobserved_graph,
+)
+from causaleffect.probability import Probability, get_new_probability
 
 
-# Define exceptions that can occur.
-class HedgeFound(Exception):
-    '''Exception raised when a hedge is found.'''
+class NoCaseTriggeredError(Exception):
+    """Exception raised when none of the lines in ID is triggered.
+    Should not be necessary when algorithm implementation is completed."""
 
-    def __init__(self, g1, g2, message="Causal effect not identifiable. A hedge has been found:"):
-        self._message = message
-        v1, e1 = printGraph(g1)
-        v2, e2 = printGraph(g2)
-        super().__init__(self._message + "\n\nC-Forest 1:\nVertices: " + ', '.join(v1) +
-                         '\nEdges: ' + ', '.join(e1) + "\n\nC-Forest 2:\nVertices: " +
-                         ', '.join(v2) + '\nEdges: ' + ', '.join(e2))
-
-
-class NoCaseTriggered(Exception):
-    '''Exception raised when none of the lines in ID is triggered.
-    Should not be necessary when algorithm implementation is completed.'''
-
-    def __init__(self, message="No case has been triggered"):
-        self._message = message
+    def __init__(self, message: str = "No case has been triggered") -> None:
+        """Initialize the exception with its message."""
+        self._message: str = message
         super().__init__(self._message)
 
 
-def ID_rec(Y, X, P, G, ordering, verbose=False, tab=0):
-    '''Recursive non-conditional identification algorithm.'''
+def ID_rec(
+    Y: set[str],
+    X: set[str],
+    P: Probability,
+    G: Graph,
+    ordering: list[str],
+    verbose: bool = False,
+    tab: int = 0,
+) -> Probability:
+    """Recursive non-conditional identification algorithm."""
 
     V = set(G.vs["name"])
-    G_dir, G_bidir = get_directed_bidirected_graphs(G)
+    G_dir, _G_bidir = get_directed_bidirected_graphs(G)
     # line 1
     if len(X) == 0:
-        if verbose: print("Depth:", tab, "Line 1 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-        if verbose: print("Depth:", tab, "Line 1 sumset:", P._sumset.union(V.difference(Y)))
+        if verbose:
+            print("Depth:", tab, "Line 1 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 1 sumset:", P._sumset.union(V.difference(Y)))
         P_out = P.copy()
         if P_out._recursive:
             P_out._sumset = P._sumset.union(V.difference(Y))
         else:
             P_out._var = Y
-        if verbose: print("Depth:", tab, "Line 1 output:", P_out.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 1 output:", P_out.printLatex())
         return P_out
 
     # line 2
     anc = get_ancestors(G_dir, Y)
     if len(V.difference(anc)) != 0:
-        if verbose: print("Depth:", tab, "Line 2 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 2 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
         P_out = P.copy()
         if P_out._recursive:
             P_out._sumset = P._sumset.union(V.difference(anc))
         else:
             P_out._var = anc
-        if verbose: print("Depth:", tab, "Line 2 output: Y:", Y, "new X:", X.intersection(anc), "new V:", anc, "P:",
-                          P_out.printLatex())
-        if verbose: print("Depth:", tab, "Line 2 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=anc))))
-        return ID_rec(Y, X.intersection(anc), P_out, G.induced_subgraph(G.vs.select(name_in=anc)), ordering,
-                      verbose=verbose, tab=tab + 1)
+        if verbose:
+            print(
+                "Depth:",
+                tab,
+                "Line 2 output: Y:",
+                Y,
+                "new X:",
+                X.intersection(anc),
+                "new V:",
+                anc,
+                "P:",
+                P_out.printLatex(),
+            )
+        if verbose:
+            print(
+                "Depth:",
+                tab,
+                "Line 2 graph:",
+                printGraph(G.induced_subgraph(G.vs.select(name_in=anc))),
+            )
+        return ID_rec(
+            Y,
+            X.intersection(anc),
+            P_out,
+            G.induced_subgraph(G.vs.select(name_in=anc)),
+            ordering,
+            verbose=verbose,
+            tab=tab + 1,
+        )
 
     # line 3
-    G_x = G.copy()
-    G_x.delete_edges(G_x.es.select(_target_in=G_x.vs.select(name_in=X)))
-    G_x_dir, G_x_bidir = get_directed_bidirected_graphs(G_x)
+    G_x_dir = G_dir.copy()
+    # Remove visible arrows into X before computing directed ancestors.
+    G_x_dir.delete_edges(G_x_dir.es.select(_target_in=G_x_dir.vs.select(name_in=X)))
     anc_x = get_ancestors(G_x_dir, Y)
     W = V.difference(X).difference(anc_x)
     if len(W) != 0:
-        if verbose: print("Depth:", tab, "Line 3 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-        if verbose: print("Depth:", tab, "Line 3 W:", W, "new X:", X.union(W))
+        if verbose:
+            print("Depth:", tab, "Line 3 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 3 W:", W, "new X:", X.union(W))
         return ID_rec(Y, X.union(W), P, G, ordering, verbose=verbose, tab=tab + 1)
 
     # line 4
     C_components_V_X = get_C_components(G.induced_subgraph(G.vs.select(name_in=V.difference(X))))
     if len(C_components_V_X) > 1:
-        if verbose: print("Depth:", tab, "Line 4 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-        if verbose: print("Depth:", tab, "Line 4 sumset:", V.difference(Y.union(X)))
-        if verbose: print("Depth:", tab, "Line 4 Probabilities:")
+        if verbose:
+            print("Depth:", tab, "Line 4 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 4 sumset:", V.difference(Y.union(X)))
+        if verbose:
+            print("Depth:", tab, "Line 4 Probabilities:")
         probabilities = set()
         for subcomponent in C_components_V_X:
             subcomponent_vertices = set(subcomponent.vs["name"])
-            if verbose: print("Depth:", tab, "Line 4 Y:", subcomponent_vertices, "X:",
-                              V.difference(subcomponent_vertices))
-            probabilities.add(
-                ID_rec(subcomponent_vertices, V.difference(subcomponent_vertices), P, G, ordering, verbose=verbose,
-                       tab=tab + 1))
+            if verbose:
+                print(
+                    "Depth:",
+                    tab,
+                    "Line 4 Y:",
+                    subcomponent_vertices,
+                    "X:",
+                    V.difference(subcomponent_vertices),
+                )
+            result = ID_rec(
+                subcomponent_vertices,
+                V.difference(subcomponent_vertices),
+                P,
+                G,
+                ordering,
+                verbose=verbose,
+                tab=tab + 1,
+            )
+            if not result.identifiable:
+                return result
+            probabilities.add(result)
         return Probability(recursive=True, children=probabilities, sumset=V.difference(Y.union(X)))
 
     # line 5
     C_components = get_C_components(G)
     if len(C_components) == 1:
-        if verbose: print("Depth:", tab, "Line 5")
-        raise HedgeFound(G, C_components_V_X[0])
+        if verbose:
+            print("Depth:", tab, "Line 5")
+        return Probability(hedge=(G.copy(), C_components_V_X[0].copy()))
 
     # line 6
     if check_subcomponent(C_components_V_X[0], C_components):
         S = set(C_components_V_X[0].vs["name"])
-        if verbose: print("Depth:", tab, "Line 6 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-        if verbose: print("Depth:", tab, "Line 6 free variables:", P.getFreeVariables())
-        if verbose: print("Depth:", tab, "Line 6 S:", S, "Sumset:", S.difference(Y))
+        if verbose:
+            print("Depth:", tab, "Line 6 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+        if verbose:
+            print("Depth:", tab, "Line 6 free variables:", P.getFreeVariables())
+        if verbose:
+            print("Depth:", tab, "Line 6 S:", S, "Sumset:", S.difference(Y))
 
         if len(S) == 1:
-            if verbose: print("Depth:", tab, "Line 6 S has only 1 element")
+            if verbose:
+                print("Depth:", tab, "Line 6 S has only 1 element")
             (vertex,) = S
             cond = get_previous_order(vertex, V, ordering)
-            if verbose: print("Depth:", tab, "Line 6 var:", vertex, "cond:", cond)
+            if verbose:
+                print("Depth:", tab, "Line 6 var:", vertex, "cond:", cond)
             P_out = get_new_probability(P, {vertex}, cond)
             P_out._sumset = P_out._sumset.union(S.difference(Y))
             return P_out
 
-        if verbose: print("Depth:", tab, "Line 6 Probabilities:")
+        if verbose:
+            print("Depth:", tab, "Line 6 Probabilities:")
         probabilities = set()
         for vertex in S:
             cond = get_previous_order(vertex, V, ordering)
-            if verbose: print("Depth:", tab, "Line 6 var:", vertex, "cond:", cond)
+            if verbose:
+                print("Depth:", tab, "Line 6 var:", vertex, "cond:", cond)
             P_out = get_new_probability(P, {vertex}, cond)
             probabilities.add(P_out)
         return Probability(recursive=True, children=probabilities, sumset=S.difference(Y))
 
     # line 7
+    subcomponent_vertices = set(C_components_V_X[0].vs["name"])
     for component in C_components:
-        if check_subgraph(C_components_V_X[0], component):
-            S_comp = set(component.vs["name"])
-            if verbose: print("Depth:", tab, "Line 7 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
-            if verbose: print("Depth:", tab, "Line 7 output: Y:", Y, "new X:", X.intersection(S_comp))
+        S_comp = set(component.vs["name"])
+        if subcomponent_vertices.issubset(S_comp):
+            if verbose:
+                print("Depth:", tab, "Line 7 before: Y:", Y, "X:", X, "V:", V, "P:", P.printLatex())
+            if verbose:
+                print("Depth:", tab, "Line 7 output: Y:", Y, "new X:", X.intersection(S_comp))
 
             if len(S_comp) == 1:
-                if verbose: print("Depth:", tab, "Line 7 S_comp has only 1 element")
+                if verbose:
+                    print("Depth:", tab, "Line 7 S_comp has only 1 element")
                 (vertex,) = S_comp
-                cond = get_previous_order(vertex, V, ordering).intersection(S_comp).union(
-                    get_previous_order(vertex, V, ordering).difference(S_comp))
-                if verbose: print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
+                cond = (
+                    get_previous_order(vertex, V, ordering)
+                    .intersection(S_comp)
+                    .union(get_previous_order(vertex, V, ordering).difference(S_comp))
+                )
+                if verbose:
+                    print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
                 P_out = get_new_probability(P, {vertex}, cond)
-                # P_mock = Probability(var={vertex}, cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(get_previous_order(vertex, V, ordering).difference(S_comp)))
+                # P_mock = Probability(
+                #     var={vertex},
+                #     cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(
+                #         get_previous_order(vertex, V, ordering).difference(S_comp)
+                #     ),
+                # )
                 # if verbose: print("Depth:", tab, "Line 7 mock ", P_mock.printLatex())
                 # if verbose: print("Depth:", tab, "Line 7 out  ", P_out.printLatex())
-                if verbose: print("Depth:", tab, "Line 7 with vertex ", vertex, " and probability: ",
-                                  P_out.printLatex())
-                if verbose: print("Depth:", tab, "Line 7 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))))
+                if verbose:
+                    print(
+                        "Depth:",
+                        tab,
+                        "Line 7 with vertex ",
+                        vertex,
+                        " and probability: ",
+                        P_out.printLatex(),
+                    )
+                if verbose:
+                    print(
+                        "Depth:",
+                        tab,
+                        "Line 7 graph:",
+                        printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))),
+                    )
 
-                return ID_rec(Y, X.intersection(S_comp), P_out, G.induced_subgraph(G.vs.select(name_in=S_comp)),
-                              ordering, verbose=verbose, tab=tab + 1)
+                return ID_rec(
+                    Y,
+                    X.intersection(S_comp),
+                    P_out,
+                    G.induced_subgraph(G.vs.select(name_in=S_comp)),
+                    ordering,
+                    verbose=verbose,
+                    tab=tab + 1,
+                )
 
-            if verbose: print("Depth:", tab, "Line 7 Probabilities has ", len(S_comp), " elements")
+            if verbose:
+                print("Depth:", tab, "Line 7 Probabilities has ", len(S_comp), " elements")
             probabilities = set()
             for vertex in S_comp:
-                cond = get_previous_order(vertex, V, ordering).intersection(S_comp).union(
-                    get_previous_order(vertex, V, ordering).difference(S_comp))
-                if verbose: print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
+                cond = (
+                    get_previous_order(vertex, V, ordering)
+                    .intersection(S_comp)
+                    .union(get_previous_order(vertex, V, ordering).difference(S_comp))
+                )
+                if verbose:
+                    print("Depth:", tab, "Line 7 var:", vertex, "cond:", cond)
                 P_out = get_new_probability(P, {vertex}, cond)
-                # P_mock = Probability(var={vertex}, cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(get_previous_order(vertex, V, ordering).difference(S_comp)))
+                # P_mock = Probability(
+                #     var={vertex},
+                #     cond=get_previous_order(vertex, V, ordering).intersection(S_comp).union(
+                #         get_previous_order(vertex, V, ordering).difference(S_comp)
+                #     ),
+                # )
                 # if verbose: print("Depth:", tab, "Line 7 mock ", P_mock.printLatex())
                 # if verbose: print("Depth:", tab, "Line 7 out  ", P_out.printLatex())
-                if verbose: print("Depth:", tab, "Line 7 with vertex ", vertex, " and probability: ",
-                                  P_out.printLatex())
+                if verbose:
+                    print(
+                        "Depth:",
+                        tab,
+                        "Line 7 with vertex ",
+                        vertex,
+                        " and probability: ",
+                        P_out.printLatex(),
+                    )
 
                 probabilities.add(P_out)
-            if verbose: print("Depth:", tab, "Line 7 graph:", printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))))
-            return ID_rec(Y, X.intersection(S_comp), Probability(recursive=True, children=probabilities),
-                          G.induced_subgraph(G.vs.select(name_in=S_comp)), ordering, verbose=verbose, tab=tab + 1)
-    raise NoCaseTriggered()
+            if verbose:
+                print(
+                    "Depth:",
+                    tab,
+                    "Line 7 graph:",
+                    printGraph(G.induced_subgraph(G.vs.select(name_in=S_comp))),
+                )
+            return ID_rec(
+                Y,
+                X.intersection(S_comp),
+                Probability(recursive=True, children=probabilities),
+                G.induced_subgraph(G.vs.select(name_in=S_comp)),
+                ordering,
+                verbose=verbose,
+                tab=tab + 1,
+            )
+    raise NoCaseTriggeredError()
 
 
-def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
-    '''Recursive conditional identification algorithm.'''
+def IDC(
+    Y: set[str],
+    X: set[str],
+    Z: set[str],
+    P: Probability,
+    G: Graph,
+    ordering: list[str],
+    verbose: bool = False,
+    tab: int = 0,
+) -> Probability:
+    """Recursive conditional identification algorithm."""
 
     # line 1
     for node in Z:
@@ -168,12 +310,16 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
         G_xz.delete_edges(G_xz.es.select(_source_in=G_xz.vs.select(name_in={node})))
         cond = Z.difference({node})
         if dSep(G_xz, Y, node, X.union(cond), verbose=verbose):
-            if verbose: print("Depth:", tab, "Line 1 CONDITIONAL", "New X: ", X.union({node}))
+            if verbose:
+                print("Depth:", tab, "Line 1 CONDITIONAL", "New X: ", X.union({node}))
             return IDC(Y, X.union({node}), cond, P, G, ordering, verbose=verbose, tab=tab + 1)
 
     # line 2
-    if verbose: print("Depth:", tab, "Line 2 CONDITIONAL, calling ID_rec with: Y: ", Y.union(Z), " X: ", X)
+    if verbose:
+        print("Depth:", tab, "Line 2 CONDITIONAL, calling ID_rec with: Y: ", Y.union(Z), " X: ", X)
     prob = ID_rec(Y.union(Z), X, P, G, ordering, verbose=verbose, tab=tab + 1)
+    if not prob.identifiable:
+        return prob
     prob_denom = prob.copy()
     prob_denom._sumset = prob_denom._sumset.union(Y)
     prob._fraction = True
@@ -182,16 +328,63 @@ def IDC(Y, X, Z, P, G, ordering, verbose=False, tab=0):
     return prob
 
 
-def ID(Y, X, G, cond=set(), verbose=False):
-    '''Identification algorithm. If some conditional variables are inputted, then IDC is called.
-    Otherwise, ID_rec is called.'''
-    
+def ID(
+    Y: set[str],
+    X: set[str],
+    G: Graph,
+    cond: set[str] | None = None,
+    verbose: bool = False,
+) -> Probability:
+    """Identify an effect, returning a probability expression or a hedge."""
+
+    cond = set() if cond is None else cond
+    if not G.is_directed():
+        raise ValueError("Graph must be directed.")
+    if "name" not in G.vertex_attributes() or any(
+        not isinstance(name, str) or not name for name in G.vs["name"]
+    ):
+        raise ValueError("Graph vertices must have names.")
+    names = G.vs["name"]
+    if len(set(names)) != len(names):
+        raise ValueError("Graph vertex names must be unique.")
+    vertices = set(names)
+    for label, variables in (("Y", Y), ("X", X), ("cond", cond)):
+        if not variables.issubset(vertices):
+            raise ValueError(f"{label} contains variables not present in the graph.")
     if len(Y.intersection(X)) + len(Y.intersection(cond)) + len(X.intersection(cond)) != 0:
-        raise Exception('Intersection of variables not empty.')
-    G_dir, G_bidir = get_directed_bidirected_graphs(G)
+        raise ValueError("Intersection of variables not empty.")
+    if "confounding" in G.edge_attributes():
+        if any(type(value) is not int or value not in (-1, 0, 1) for value in G.es["confounding"]):
+            raise ValueError("Invalid confounding edge value.")
+        halves = Counter(
+            (edge.source, edge.target, edge["confounding"])
+            for edge in G.es
+            if edge["confounding"] != 0
+        )
+        if any(
+            source == target or count != halves[(target, source, -sign)]
+            for (source, target, sign), count in halves.items()
+        ):
+            raise ValueError("Invalid confounding edge pairing.")
+    G = _typed_graph(G)
+    G_dir, _G_bidir = get_directed_bidirected_graphs(G)
     if not G_dir.is_dag():
-        raise Exception('Entered graph is not a DAG.')
+        raise ValueError("Entered graph is not a DAG.")
     if len(cond) == 0:
-        return ID_rec(Y, X, Probability(var=set(G.vs["name"])), G, get_topological_ordering(G), verbose=verbose)
-    else:
-        return IDC(Y, X, cond, Probability(var=set(G.vs["name"])), G, get_topological_ordering(G), verbose=verbose)
+        return ID_rec(
+            Y,
+            X,
+            Probability(var=set(G.vs["name"])),
+            G,
+            get_topological_ordering(G),
+            verbose=verbose,
+        )
+    return IDC(
+        Y,
+        X,
+        cond,
+        Probability(var=set(G.vs["name"])),
+        G,
+        get_topological_ordering(G),
+        verbose=verbose,
+    )

@@ -4,64 +4,96 @@
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install `causaleffect`.
+Version 0.1.0 requires Python 3.11 or newer:
 
 ```bash
-pip install causaleffect
+python -m pip install "causaleffect==0.1.0"
 ```
 
-If one wants to plot graphs with the `plotGraph` function, either the `pycairo` library (version `1.17.2` or later) or the `cairocffi` library is also required.
+For `plotGraph`, install the plotting extra:
+
+```bash
+python -m pip install "causaleffect[plot]==0.1.0"
+```
+
+For Python 3.7–3.10, install the [0.0.2 release](https://pypi.org/project/causaleffect/0.0.2/) instead:
+
+```bash
+python -m pip install "causaleffect==0.0.2"
+```
+
+Its source is preserved in the [0.0.2 Git tag](https://github.com/pedemonte96/causaleffect/tree/0.0.2). Python 3.11+ users can also pin that version.
+
+For plotting with 0.0.2, install `pycairo` or `cairocffi` separately.
+
+For local development and checks, see [Contributing](https://github.com/pedemonte96/causaleffect/blob/main/CONTRIBUTING.md).
 
 ## Usage
 
 If we want to compute the causal effect P(y|do(X=x)) from the causal diagram shown below,
 
-![dag](images/usage_s.png)
+![dag](https://raw.githubusercontent.com/pedemonte96/causaleffect/main/images/usage_s.png)
 
 we first create and display the graph:
 
 ```python
 import causaleffect
 
-G = causaleffect.createGraph(['X<->Y', 'Z->Y', 'X->Z', 'W->X', 'W->Z'])
+G = causaleffect.createGraph(["X<->Y", "Z->Y", "X->Z", "W->X", "W->Z"])
 causaleffect.plotGraph(G)
 ```
+
 which renders the following image
 
-![dag](images/usage_plot.png)
+![dag](https://raw.githubusercontent.com/pedemonte96/causaleffect/main/images/usage_plot.png)
 
 Then we can compute the causal effect by executing:
 
 ```python
-P = causaleffect.ID({'Y'}, {'X'}, G)
-P.printLatex()
+P = causaleffect.ID({"Y"}, {"X"}, G)
+print(P.printLatex())
 ```
 
 The code above computes the causal effect, and returns a string encoding the distribution in LaTeX notation:
+
 ```
-'\sum_{w, z}P(w)P(z|w, x)\left(\sum_{x}P(x|w)P(y|w, x, z)\right)'
+\sum_{w, z}P(w)P(z|w, x)\left(\sum_{x}P(x|w)P(y|w, x, z)\right)
 ```
 
 This string, in LaTeX, is
 
-![effect](images/causal_effect.png)
+![effect](https://raw.githubusercontent.com/pedemonte96/causaleffect/main/images/causal_effect.png)
+
+If the effect is not identifiable, `ID` returns a `Probability` with `identifiable == False`. Its `hedge` contains the two C-forest graphs; use `causaleffect.printGraph(P.hedge[0])` and `causaleffect.printGraph(P.hedge[1])` to inspect them.
 
 ## Examples
 
-Some examples from the dissertation can be found in this repository:
+Start with the [quickstart script](https://github.com/pedemonte96/causaleffect/blob/main/examples/quickstart.py) for identifiable, conditional, and confounded effects.
 
-| Figure number   | Example file                             |
-|-----------------|------------------------------------------|
-| Figure 3.5 (a)  | [`example_1.py`](examples/example_1.py)  |
-| Figure 3.6 (a)  | [`example_2.py`](examples/example_2.py)  |
-| Figure 3.6 (b)  | [`example_3.py`](examples/example_3.py)  |
-| Figure 3.10     | [`example_4.py`](examples/example_4.py)  |
-| Figure 3.12     | [`example_5.py`](examples/example_5.py)  |
-| Figure 3.13     | [`example_6.py`](examples/example_6.py)  |
-| Figure 3.15 (a) | [`example_7.py`](examples/example_7.py)  |
-| Figure 3.15 (b) | [`example_8.py`](examples/example_8.py)  |
-| Figure 3.16     | [`example_9.py`](examples/example_9.py)  |
+Other examples from the dissertation:
+
+| Figure number   | Example file                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Figure 3.5 (a)  | [`example_1.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_1.py) |
+| Figure 3.6 (a)  | [`example_2.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_2.py) |
+| Figure 3.6 (b)  | [`example_3.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_3.py) |
+| Figure 3.10     | [`example_4.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_4.py) |
+| Figure 3.12     | [`example_5.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_5.py) |
+| Figure 3.13     | [`example_6.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_6.py) |
+| Figure 3.15 (a) | [`example_7.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_7.py) |
+| Figure 3.15 (b) | [`example_8.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_8.py) |
+| Figure 3.16     | [`example_9.py`](https://github.com/pedemonte96/causaleffect/blob/main/examples/example_9.py) |
 
 ## Documentation
 
-The extended documentation of this library can be found under the folder `documentation` of this same repository or in https://arxiv.org/abs/2107.04632.
+Read the [API guide](https://github.com/pedemonte96/causaleffect/blob/main/documentation/API.md) or the [generated API reference](https://pedemonte96.github.io/causaleffect/causaleffect.html). The [dissertation](https://arxiv.org/abs/2107.04632) explains the algorithms.
+
+Run the [benchmark](https://github.com/pedemonte96/causaleffect/blob/main/benchmarks/benchmark.py) with `python benchmarks/benchmark.py`. Results are local timing measurements, not performance targets.
+
+See the [changelog](https://github.com/pedemonte96/causaleffect/blob/main/CHANGELOG.md).
+
+## Citation
+
+If you use `causaleffect` in research, please cite:
+
+Pedemonte, M., Vitrià, J., & Parafita, Á. (2021). _Algorithmic Causal Effect Identification with causaleffect_. arXiv. https://doi.org/10.48550/arXiv.2107.04632
