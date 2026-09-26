@@ -326,9 +326,7 @@ def is_path_d_separated(G: Graph, p: list[int], cond: set[str], verbose: bool = 
             or (e1 == "l" and e2 == "r")
             or (e1 == "l" and e2 == "b")
             or (e1 == "b" and e2 == "r")
-        ) and G.vs[p[i + 1]][
-            "name"
-        ] in cond:  # -> -> // <- <- // <- -> // <- <-> // <-> ->
+        ) and G.vs[p[i + 1]]["name"] in cond:  # -> -> // <- <- // <- -> // <- <-> // <-> ->
             if verbose:
                 print(
                     "is_path_d_separated: Chain or Fork:",
