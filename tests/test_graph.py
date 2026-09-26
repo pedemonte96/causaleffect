@@ -55,6 +55,8 @@ def test_graph_ancestry_and_ordering() -> None:
     assert graph.get_ancestors(g, {"Y", "Z"}) == {"X", "Y", "Z"}
     assert graph.get_descendants(g, "X") == {"X", "Y", "Z"}
     assert graph.get_descendants(g, {"X", "Y"}) == {"X", "Y", "Z"}
+    diamond = graph.createGraph(["X->A", "X->B", "A->Y", "B->Y"])
+    assert graph.get_descendants(diamond, "X") == {"X", "A", "B", "Y"}
 
     cycle = graph.createGraph(["X->Y", "Y->X"])
     with pytest.raises(ValueError, match="cycle"):
@@ -108,13 +110,16 @@ def test_unobserved_graph_replaces_confounding_edges() -> None:
     [
         (["X->M", "M->Y"], set(), False),
         (["X->M", "M->Y"], {"M"}, True),
+        (["M->X", "M->Y"], {"M"}, True),
         (["X->M", "Y->M"], set(), True),
         (["X->M", "Y->M"], {"M"}, False),
+        (["X->M", "Y->M", "M->D"], {"D"}, False),
     ],
 )
 def test_d_separation(edges: list[str], conditioned: set[str], expected: bool) -> None:
     """Conditioning blocks chains and opens colliders."""
     g = graph.createGraph(edges)
+    assert graph.dSep(g, {"Y"}, "X", conditioned) is expected
     assert graph.dSep(g, {"Y"}, "X", conditioned, verbose=True) is expected
 
 

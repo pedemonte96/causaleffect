@@ -158,6 +158,42 @@ def test_without_intervention_and_recursive_base_case() -> None:
     assert result.printLatex(simplify=False) == r"\sum_{x}P(x)P(y)"
 
 
+def test_identification_uses_multivertex_confounding_component(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A confounded outcome component is factored and marginalized."""
+    g = createGraph(["X->Y", "Z->Y", "Y<->Z"])
+    result = ID({"Y"}, {"X"}, g, verbose=True)
+
+    assert result.printLatex(simplify=False) == r"\sum_{z}P(y|x, z)P(z|x)"
+    assert result.printLatex() == "P(y|x)"
+    assert "Line 6 Probabilities" in capsys.readouterr().out
+
+
+def test_unidentifiable_subproblem_propagates_hedge() -> None:
+    """A non-identifiable component makes the full query non-identifiable."""
+    g = createGraph(["X->Y", "X<->Y", "Z->Y"])
+    result = ID({"Y"}, {"X"}, g)
+
+    assert not result.identifiable
+    assert [set(forest.vs["name"]) for forest in result.hedge] == [{"X", "Y"}, {"Y"}]
+
+
+def test_multiple_conditioning_variables_are_processed() -> None:
+    """Conditional identification handles more than one measured parent."""
+    g = createGraph(["X->Y", "Z->Y", "W->Y"])
+    assert ID({"Y"}, {"X"}, g, cond={"Z", "W"}).printLatex() == "P(y|w, x, z)"
+
+
+def test_confounding_keeps_multiple_variables_in_condition() -> None:
+    """Confounded measured parents remain in a conditional effect."""
+    g = createGraph(["X->Y", "Z->Y", "W->Y", "Z<->Y", "W<->Y"])
+    result = ID({"Y"}, {"X"}, g, cond={"Z", "W"})
+
+    assert result.identifiable
+    assert result.printLatex() == r"\frac{P(w, y, z|x)}{P(w, z|x)}"
+
+
 @pytest.mark.parametrize(
     ("edges", "conditioned"),
     [

@@ -1,5 +1,7 @@
 """Tests for probability expressions and simplification."""
 
+import pytest
+
 from causaleffect import Probability
 from causaleffect.probability import get_new_probability
 
@@ -49,16 +51,41 @@ def test_simplify_cancels_simple_denominators() -> None:
     assert expression.printLatex(simplify=False) == "P(x)"
 
 
-def test_simplify_merges_conditional_factors() -> None:
+def test_simplify_preserves_nonredundant_denominator() -> None:
+    """A conditional denominator remains when it cannot be cancelled."""
+    expression = Probability(var={"Y"}, fraction=True, divisor=Probability(var={"Z"}, cond={"X"}))
+
+    expression.simplify()
+
+    assert expression.printLatex(simplify=False) == r"\frac{P(y)}{P(z|x)}"
+
+
+def test_simplify_merges_conditional_factors(capsys: pytest.CaptureFixture[str]) -> None:
     """Complete simplification combines a joint and conditional factor."""
     expression = Probability(
         recursive=True,
         children={Probability(var={"Y"}, cond={"X"}), Probability(var={"X"})},
     )
-    expression.simplify()
+    expression.simplify(complete=False)
+    assert expression.printLatex(simplify=False) == "P(x)P(y|x)"
+
+    expression.simplify(verbose=True)
 
     assert expression.printLatex(simplify=False) == "P(x, y)"
     assert not expression._recursive
+    assert "Additional simplification" in capsys.readouterr().out
+
+
+def test_unrelated_product_factors_stay_separate() -> None:
+    """Simplification leaves independent probability factors intact."""
+    expression = Probability(
+        recursive=True, children={Probability(var={"X"}), Probability(var={"Y"})}
+    )
+
+    expression.simplify()
+
+    assert expression.printLatex(simplify=False) == "P(x)P(y)"
+    assert expression._recursive
 
 
 def test_decouple_flattens_unsummed_products_only() -> None:
